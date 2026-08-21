@@ -185,7 +185,9 @@ Panel {
   readonly property string reportCondition: current ? Model.symbolLabel(current.symbolCode) : ""
   readonly property string reportWind:      Model.formatWind(current, unit)
   readonly property string reportHumidity:  current && current.humidity !== null ? Math.round(current.humidity) + "%" : ""
-  readonly property string reportPrecip:    current ? Model.formatPrecip(current.precipMm, unit) : ""
+  readonly property var sun:                Model.sunTimes(effectiveLocation.latitude, effectiveLocation.longitude, tick)
+  readonly property string reportSunrise:   hasLocation ? Model.formatSunTime(sun.sunrise, sun.polar) : ""
+  readonly property string reportSunset:    hasLocation ? Model.formatSunTime(sun.sunset, sun.polar) : ""
   readonly property var hourlyPoints:       Model.hourlyForecast(forecast, tick.getTime(), graphHours)
   readonly property var forecastDays:       Model.dailyForecast(forecast, Qt.formatDate(tick, "yyyy-MM-dd"), 4)
   readonly property string updatedClock:    fetchedAt ? Model.formatClock(fetchedAt) : ""
@@ -484,11 +486,14 @@ Panel {
             width: parent.width
             height: Math.max(heroLeft.height, heroRight.height)
 
-            Row {
+            Column {
               id: heroLeft
               anchors.left: parent.left
               anchors.leftMargin: Style.space(16)
               anchors.verticalCenter: parent.verticalCenter
+              spacing: Style.space(2)
+
+            Row {
               spacing: Style.space(16)
 
               Text {
@@ -533,9 +538,18 @@ Panel {
               }
             }
 
+              Text {
+                visible: root.reportCondition !== ""
+                text: root.reportCondition
+                color: root.bar.foreground
+                font.family: root.bar.fontFamily
+                font.pixelSize: Style.font.subtitle
+              }
+            }
+
             Column {
               id: heroRight
-              width: Math.max(weatherStats.implicitWidth, Style.space(210))
+              width: Math.max(weatherStats.implicitWidth, Style.space(230))
               anchors.right: parent.right
               anchors.rightMargin: Style.space(20)
               anchors.verticalCenter: parent.verticalCenter
@@ -579,24 +593,17 @@ Panel {
                 }
               }
 
-              Text {
-                visible: root.reportCondition !== ""
-                text: root.reportCondition
-                color: root.bar.foreground
-                font.family: root.bar.fontFamily
-                font.pixelSize: Style.font.subtitle
-              }
-
               Row {
                 id: weatherStats
                 visible: !!root.current
-                spacing: Style.space(28)
+                spacing: Style.space(20)
 
                 Repeater {
                   model: [
                     { label: "WIND", value: root.reportWind },
                     { label: "HUMID", value: root.reportHumidity },
-                    { label: "RAIN 1H", value: root.reportPrecip }
+                    { label: "SUNRISE", value: root.reportSunrise },
+                    { label: "SUNSET", value: root.reportSunset }
                   ]
 
                   Column {
@@ -755,7 +762,7 @@ Panel {
           }
 
           // ================================================================
-          // 4. Settings
+          // 4. Settings (left) · attribution and update stamp (right)
           // ================================================================
           Rectangle {
             width: parent.width
@@ -770,8 +777,9 @@ Panel {
 
             Row {
               id: settingsRow
-              anchors.horizontalCenter: parent.horizontalCenter
-              spacing: Style.space(12)
+              anchors.left: parent.left
+              anchors.leftMargin: Style.space(12)
+              spacing: Style.space(10)
 
               ButtonGroup {
                 anchors.verticalCenter: parent.verticalCenter
@@ -796,35 +804,35 @@ Panel {
                 onClicked: root.startEditingLocation()
               }
             }
-          }
 
-          // ---- Attribution (required by MET Norway's licence) and freshness.
-          Row {
-            anchors.horizontalCenter: parent.horizontalCenter
-            spacing: Style.space(6)
+            // Attribution (required by MET Norway's licence) + clickable stamp.
+            Row {
+              anchors.right: parent.right
+              anchors.rightMargin: Style.space(16)
+              anchors.verticalCenter: parent.verticalCenter
+              spacing: Style.space(6)
 
-            Text {
-              text: Model.ATTRIBUTION
-              color: root.fadedText
-              font.family: root.bar.fontFamily
-              font.pixelSize: Style.font.caption
-            }
-            // Clicking the timestamp forces a reload.
-            Text {
-              visible: root.updatedClock !== "" || root.fetchError !== ""
-              text: "·  " + (root.updatedClock !== "" ? "updated " + root.updatedClock : "not updated")
-                + (forecastProc.running ? "  󰦖" : "")
-              color: updatedHover.hovered ? root.bar.foreground : root.fadedText
-              font.family: root.bar.fontFamily
-              font.pixelSize: Style.font.caption
-              font.underline: updatedHover.hovered
-
-              TapHandler {
-                onTapped: root.refresh(true)
+              Text {
+                text: Model.ATTRIBUTION
+                color: root.fadedText
+                font.family: root.bar.fontFamily
+                font.pixelSize: Style.font.caption
               }
-              HoverHandler {
-                id: updatedHover
-                cursorShape: Qt.PointingHandCursor
+              Text {
+                visible: root.updatedClock !== "" || root.fetchError !== ""
+                text: "·  " + (root.updatedClock !== "" ? "updated " + root.updatedClock : "not updated")
+                  + (forecastProc.running ? "  󰦖" : "")
+                color: updatedHover.hovered ? root.bar.foreground : root.fadedText
+                font.family: root.bar.fontFamily
+                font.pixelSize: Style.font.caption
+
+                TapHandler {
+                  onTapped: root.refresh(true)
+                }
+                HoverHandler {
+                  id: updatedHover
+                  cursorShape: Qt.PointingHandCursor
+                }
               }
             }
           }

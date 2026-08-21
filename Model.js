@@ -571,6 +571,54 @@ function graphScale(points, unit) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Sunrise / sunset (computed locally — no API call)
+// ---------------------------------------------------------------------------
+
+// Solar position equations as used by suncalc (Agafonkin, MIT). Accurate to
+// a minute or two, which is plenty for a weather popup. `date` is any time on
+// the local day in question. Returns nulls during polar day/night.
+function sunTimes(latitude, longitude, date) {
+  var lat = num(latitude), lon = num(longitude)
+  var none = { sunrise: null, sunset: null, polar: "" }
+  if (lat === null || lon === null) return none
+  var d = date instanceof Date ? date : new Date(date)
+  if (isNaN(d.getTime())) return none
+
+  var rad = Math.PI / 180
+  var dayMs = 86400000, J1970 = 2440588, J2000 = 2451545
+  var noon = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12, 0, 0)
+  var days = noon.valueOf() / dayMs - 0.5 + J1970 - J2000
+
+  var lw = -lon * rad
+  var phi = lat * rad
+  var n = Math.round(days - 0.0009 - lw / (2 * Math.PI))
+  var ds = 0.0009 + lw / (2 * Math.PI) + n
+  var M = rad * (357.5291 + 0.98560028 * ds)
+  var C = rad * (1.9148 * Math.sin(M) + 0.02 * Math.sin(2 * M) + 0.0003 * Math.sin(3 * M))
+  var L = M + C + rad * 102.9372 + Math.PI
+  var dec = Math.asin(Math.sin(L) * Math.sin(rad * 23.4397))
+  var Jtransit = J2000 + ds + 0.0053 * Math.sin(M) - 0.0069 * Math.sin(2 * L)
+
+  var h0 = -0.833 * rad
+  var cosH = (Math.sin(h0) - Math.sin(phi) * Math.sin(dec)) / (Math.cos(phi) * Math.cos(dec))
+  if (cosH > 1) return { sunrise: null, sunset: null, polar: "night" }
+  if (cosH < -1) return { sunrise: null, sunset: null, polar: "day" }
+  var H = Math.acos(cosH)
+  var Jset = J2000 + (0.0009 + (H + lw) / (2 * Math.PI) + n) + 0.0053 * Math.sin(M) - 0.0069 * Math.sin(2 * L)
+  var Jrise = Jtransit - (Jset - Jtransit)
+
+  function fromJulian(j) { return new Date((j + 0.5 - J1970) * dayMs) }
+  return { sunrise: fromJulian(Jrise), sunset: fromJulian(Jset), polar: "" }
+}
+
+function formatSunTime(date, polar) {
+  if (date instanceof Date && !isNaN(date.getTime())) return pad2(date.getHours()) + ":" + pad2(date.getMinutes())
+  if (polar === "day") return "up all day"
+  if (polar === "night") return "down all day"
+  return ""
+}
+
 if (typeof module !== "undefined") {
   module.exports = {
     VERSION: VERSION,
@@ -615,6 +663,8 @@ if (typeof module !== "undefined") {
     hourlyForecast: hourlyForecast,
     niceStep: niceStep,
     graphScale: graphScale,
-    formatClock: formatClock
+    formatClock: formatClock,
+    sunTimes: sunTimes,
+    formatSunTime: formatSunTime
   }
 }

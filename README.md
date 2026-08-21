@@ -12,14 +12,16 @@ all from **MET Norway's** Locationforecast API, the same data that powers
 
 The popup, top to bottom:
 
-1. **Current weather** — glyph, temperature, location (with a search
-   button), condition, wind / humidity / rain in the coming hour.
+1. **Current weather** — glyph, temperature and condition; location (with
+   a search button), wind, humidity, sunrise and sunset (computed locally
+   from the coordinates — no extra API calls).
 2. **Next 24 hours** — symbols along the top, temperature curve,
    precipitation bars with amounts, hour labels.
 3. **Next 4 days** — symbol, day, high / low.
 4. **Settings** — `°C | °F | K` and `Location`, which opens a search view
    in place of the whole popup: type a city, pick a match, or go back to
-   automatic (IP-based) location.
+   automatic (IP-based) location. The same row carries the MET attribution
+   and the "updated HH:MM" stamp (click it to reload).
 
 Plugin id: `knutsi.weather-yr`. Requires Omarchy 4.0 or newer (the
 Quickshell-based shell with third-party plugin support).
