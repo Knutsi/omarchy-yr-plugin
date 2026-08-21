@@ -7,8 +7,9 @@ import "Model.js" as Model
 
 // Detail popup + data layer for knutsi.weather-yr.
 //
-// Layout, top to bottom: current weather · hour-by-hour graph · next five
-// days · settings (units, location, refresh) · attribution.
+// Layout, top to bottom: current weather · hour-by-hour graph · next four
+// days · settings (units, location) · attribution. Changing the location
+// swaps the whole content for a search view.
 //
 // Data: MET Norway Locationforecast 2.0 (yr.no's API). One fetch per
 // refresh interval (never more often than every 10 minutes, per MET's terms),
@@ -186,7 +187,7 @@ Panel {
   readonly property string reportHumidity:  current && current.humidity !== null ? Math.round(current.humidity) + "%" : ""
   readonly property string reportPrecip:    current ? Model.formatPrecip(current.precipMm, unit) : ""
   readonly property var hourlyPoints:       Model.hourlyForecast(forecast, tick.getTime(), graphHours)
-  readonly property var forecastDays:       Model.dailyForecast(forecast, Qt.formatDate(tick, "yyyy-MM-dd"), 5)
+  readonly property var forecastDays:       Model.dailyForecast(forecast, Qt.formatDate(tick, "yyyy-MM-dd"), 4)
   readonly property string updatedClock:    fetchedAt ? Model.formatClock(fetchedAt) : ""
   readonly property string tooltipText:     current
     ? [reportCondition, reportTemp, reportLocation].filter(function(p) { return p !== "" }).join("  ·  ")
@@ -466,6 +467,14 @@ Panel {
         Column {
           id: weatherColumn
           width: weatherScroll.width
+
+          // ---------------------------------------------------------------
+          // Main view
+          // ---------------------------------------------------------------
+          Column {
+          id: mainView
+          visible: !root.editingLocation
+          width: parent.width
           spacing: Style.space(12)
 
           // ================================================================
@@ -532,9 +541,8 @@ Panel {
               anchors.verticalCenter: parent.verticalCenter
               spacing: Style.space(8)
 
-              // Location name + search button. Clicking either opens the search.
+              // Location name + search button. Clicking either opens the search view.
               Row {
-                visible: !root.editingLocation
                 spacing: Style.space(6)
 
                 Text {
@@ -568,72 +576,6 @@ Panel {
                   fontFamily: root.bar.fontFamily
                   fontSize: Style.font.bodySmall
                   onClicked: root.startEditingLocation()
-                }
-              }
-
-              // Search field (replaces the location row while editing).
-              Row {
-                visible: root.editingLocation
-                spacing: Style.space(6)
-
-                TextField {
-                  id: locationField
-                  width: Style.space(190)
-                  enabled: !root.savingLocation
-                  placeholderText: "Search city"
-                  foreground: root.bar.foreground
-                  font.family: root.bar.fontFamily
-
-                  onTextChanged: if (root.editingLocation && !root.savingLocation) geocodeDebounce.restart()
-
-                  Keys.onPressed: function(event) {
-                    if (event.key === Qt.Key_Escape) {
-                      root.cancelEditingLocation()
-                      event.accepted = true
-                    } else if (event.key === Qt.Key_Down) {
-                      if (root.suggestionIndex < root.locationSuggestions.length - 1) root.suggestionIndex++
-                      event.accepted = true
-                    } else if (event.key === Qt.Key_Up) {
-                      if (root.suggestionIndex > 0) root.suggestionIndex--
-                      event.accepted = true
-                    } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-                      root.commitLocation()
-                      event.accepted = true
-                    }
-                  }
-                }
-
-                // Clear back to IP auto-detect; a spinner while a commit loads.
-                Rectangle {
-                  width: Style.space(18)
-                  height: Style.space(18)
-                  anchors.verticalCenter: parent.verticalCenter
-                  radius: Math.min(4, Style.cornerRadius)
-                  color: !root.savingLocation && clearLocationArea.containsMouse ? Style.hoverFillFor(root.bar.foreground, Color.accent) : "transparent"
-
-                  Text {
-                    anchors.centerIn: parent
-                    text: root.savingLocation ? "󰦖" : "✕"
-                    font.family: root.bar.fontFamily
-                    color: Qt.darker(root.bar.foreground, 1.4)
-                    font.pixelSize: Style.font.bodySmall
-
-                    RotationAnimator on rotation {
-                      running: root.savingLocation
-                      from: 0; to: 360
-                      duration: 800
-                      loops: Animation.Infinite
-                    }
-                  }
-
-                  MouseArea {
-                    id: clearLocationArea
-                    anchors.fill: parent
-                    enabled: !root.savingLocation
-                    hoverEnabled: true
-                    cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
-                    onClicked: root.clearLocation()
-                  }
                 }
               }
 
@@ -674,57 +616,6 @@ Panel {
                       font.pixelSize: Style.font.title
                     }
                   }
-                }
-              }
-            }
-          }
-
-          // ---- Geocoding suggestions while the location is being edited.
-          Column {
-            visible: root.editingLocation && !root.savingLocation && root.locationSuggestions.length > 0
-            width: parent.width
-            spacing: 0
-
-            Repeater {
-              model: root.locationSuggestions
-
-              Rectangle {
-                required property var modelData
-                required property int index
-                width: parent.width
-                height: suggestionRow.implicitHeight + Style.space(12)
-                radius: Style.cornerRadius
-                color: index === root.suggestionIndex ? Style.hoverFillFor(root.bar.foreground, Color.accent) : "transparent"
-
-                Row {
-                  id: suggestionRow
-                  anchors.left: parent.left
-                  anchors.leftMargin: Style.space(16)
-                  anchors.verticalCenter: parent.verticalCenter
-                  spacing: Style.space(8)
-
-                  Text {
-                    text: modelData.name
-                    color: index === root.suggestionIndex ? Style.hoverStateColor(root.bar.foreground, Color.accent) : root.bar.foreground
-                    font.family: root.bar.fontFamily
-                    font.pixelSize: Style.font.body
-                  }
-                  Text {
-                    visible: text !== ""
-                    text: modelData.description
-                    color: root.mutedText
-                    font.family: root.bar.fontFamily
-                    font.pixelSize: Style.font.bodySmall
-                    anchors.verticalCenter: parent.verticalCenter
-                  }
-                }
-
-                MouseArea {
-                  anchors.fill: parent
-                  hoverEnabled: true
-                  cursorShape: Qt.PointingHandCursor
-                  onPositionChanged: root.suggestionIndex = index
-                  onClicked: root.pickSuggestion(modelData)
                 }
               }
             }
@@ -778,7 +669,7 @@ Panel {
           }
 
           // ================================================================
-          // 3. Next five days
+          // 3. Next four days
           // ================================================================
           Rectangle {
             visible: root.forecastDays.length > 0
@@ -897,24 +788,12 @@ Panel {
                 anchors.verticalCenter: parent.verticalCenter
                 iconText: ""
                 text: "Location"
-                tooltipText: "Search for a city"
+                tooltipText: "Search for a city (Enter)"
                 foreground: root.bar.foreground
                 fontFamily: root.bar.fontFamily
                 fontSize: Style.font.bodySmall
                 bordered: true
                 onClicked: root.startEditingLocation()
-              }
-
-              Button {
-                anchors.verticalCenter: parent.verticalCenter
-                iconText: "󰑐"
-                text: "Refresh"
-                tooltipText: "Fetch the forecast again"
-                foreground: root.bar.foreground
-                fontFamily: root.bar.fontFamily
-                fontSize: Style.font.bodySmall
-                bordered: true
-                onClicked: root.refresh(true)
               }
             }
           }
@@ -930,12 +809,217 @@ Panel {
               font.family: root.bar.fontFamily
               font.pixelSize: Style.font.caption
             }
+            // Clicking the timestamp forces a reload.
             Text {
-              visible: root.updatedClock !== ""
-              text: "·  updated " + root.updatedClock
-              color: root.fadedText
+              visible: root.updatedClock !== "" || root.fetchError !== ""
+              text: "·  " + (root.updatedClock !== "" ? "updated " + root.updatedClock : "not updated")
+                + (forecastProc.running ? "  󰦖" : "")
+              color: updatedHover.hovered ? root.bar.foreground : root.fadedText
               font.family: root.bar.fontFamily
               font.pixelSize: Style.font.caption
+              font.underline: updatedHover.hovered
+
+              TapHandler {
+                onTapped: root.refresh(true)
+              }
+              HoverHandler {
+                id: updatedHover
+                cursorShape: Qt.PointingHandCursor
+              }
+            }
+          }
+          }
+
+          // ---------------------------------------------------------------
+          // Search view — replaces everything while a location is picked.
+          // ---------------------------------------------------------------
+          Column {
+            id: searchView
+            visible: root.editingLocation
+            width: parent.width
+            spacing: Style.space(12)
+
+            Item {
+              width: parent.width
+              height: Style.space(28)
+
+              Text {
+                anchors.left: parent.left
+                anchors.leftMargin: Style.space(16)
+                anchors.verticalCenter: parent.verticalCenter
+                text: "CHANGE LOCATION"
+                color: root.mutedText
+                font.family: root.bar.fontFamily
+                font.pixelSize: Style.font.caption
+                font.letterSpacing: 1
+              }
+
+              PanelActionButton {
+                anchors.right: parent.right
+                anchors.rightMargin: Style.space(12)
+                anchors.verticalCenter: parent.verticalCenter
+                iconText: "✕"
+                tooltipText: "Back (Esc)"
+                foreground: root.bar.foreground
+                fontFamily: root.bar.fontFamily
+                fontSize: Style.font.bodySmall
+                onClicked: root.cancelEditingLocation()
+              }
+            }
+
+            Item {
+              width: parent.width
+              height: locationField.implicitHeight
+
+              TextField {
+                id: locationField
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.leftMargin: Style.space(16)
+                anchors.rightMargin: Style.space(16)
+                enabled: !root.savingLocation
+                placeholderText: "Search for a city…"
+                foreground: root.bar.foreground
+                font.family: root.bar.fontFamily
+
+                onTextChanged: if (root.editingLocation && !root.savingLocation) geocodeDebounce.restart()
+
+                Keys.onPressed: function(event) {
+                  if (event.key === Qt.Key_Escape) {
+                    root.cancelEditingLocation()
+                    event.accepted = true
+                  } else if (event.key === Qt.Key_Down) {
+                    if (root.suggestionIndex < root.locationSuggestions.length - 1) root.suggestionIndex++
+                    event.accepted = true
+                  } else if (event.key === Qt.Key_Up) {
+                    if (root.suggestionIndex > 0) root.suggestionIndex--
+                    event.accepted = true
+                  } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                    root.commitLocation()
+                    event.accepted = true
+                  }
+                }
+              }
+            }
+
+            Row {
+              anchors.left: parent.left
+              anchors.leftMargin: Style.space(16)
+              spacing: Style.space(6)
+
+              Text {
+                text: root.savingLocation ? "󰦖" : ""
+                visible: root.savingLocation
+                color: root.mutedText
+                font.family: root.bar.fontFamily
+                font.pixelSize: Style.font.caption
+                RotationAnimator on rotation {
+                  running: root.savingLocation
+                  from: 0; to: 360
+                  duration: 800
+                  loops: Animation.Infinite
+                }
+              }
+              Text {
+                text: root.savingLocation ? "Saving and fetching the forecast…"
+                  : (locationField.text.trim().length < 2 ? "Type at least two letters"
+                  : (root.locationSuggestions.length === 0 ? (geocodeProc.running ? "Searching…" : "No matches")
+                  : "↑ ↓ to choose  ·  Enter to pick  ·  Esc to go back"))
+                color: root.fadedText
+                font.family: root.bar.fontFamily
+                font.pixelSize: Style.font.caption
+              }
+            }
+
+            Column {
+              visible: !root.savingLocation && root.locationSuggestions.length > 0
+              width: parent.width
+              spacing: 0
+
+              Repeater {
+                model: root.locationSuggestions
+
+                Rectangle {
+                  required property var modelData
+                  required property int index
+                  width: parent.width
+                  height: suggestionRow.implicitHeight + Style.space(14)
+                  radius: Style.cornerRadius
+                  color: index === root.suggestionIndex ? Style.hoverFillFor(root.bar.foreground, Color.accent) : "transparent"
+
+                  Row {
+                    id: suggestionRow
+                    anchors.left: parent.left
+                    anchors.leftMargin: Style.space(16)
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: Style.space(8)
+
+                    Text {
+                      text: modelData.name
+                      color: index === root.suggestionIndex ? Style.hoverStateColor(root.bar.foreground, Color.accent) : root.bar.foreground
+                      font.family: root.bar.fontFamily
+                      font.pixelSize: Style.font.body
+                    }
+                    Text {
+                      visible: text !== ""
+                      text: modelData.description
+                      color: root.mutedText
+                      font.family: root.bar.fontFamily
+                      font.pixelSize: Style.font.bodySmall
+                      anchors.verticalCenter: parent.verticalCenter
+                    }
+                  }
+
+                  MouseArea {
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onPositionChanged: root.suggestionIndex = index
+                    onClicked: root.pickSuggestion(modelData)
+                  }
+                }
+              }
+            }
+
+            Rectangle {
+              width: parent.width
+              height: Style.spacing.hairline
+              color: root.bar.foreground
+              opacity: 0.12
+            }
+
+            // Where we are now, and the way back to auto-detect.
+            Item {
+              width: parent.width
+              height: Math.max(currentLocationText.implicitHeight, autoButton.implicitHeight)
+
+              Text {
+                id: currentLocationText
+                anchors.left: parent.left
+                anchors.leftMargin: Style.space(16)
+                anchors.verticalCenter: parent.verticalCenter
+                text: root.configuredLocation !== ""
+                  ? "Now: " + root.configuredLocation.toUpperCase() + "  (saved)"
+                  : "Now: " + (root.detectedLocation.name ? root.detectedLocation.name.toUpperCase() : "—") + "  (auto-detected from IP)"
+                color: root.mutedText
+                font.family: root.bar.fontFamily
+                font.pixelSize: Style.font.bodySmall
+              }
+
+              Button {
+                id: autoButton
+                anchors.right: parent.right
+                anchors.rightMargin: Style.space(16)
+                anchors.verticalCenter: parent.verticalCenter
+                visible: root.configuredLocation !== ""
+                iconText: "󰆤"
+                text: "Use automatic location"
+                foreground: root.bar.foreground
+                fontFamily: root.bar.fontFamily
+                fontSize: Style.font.bodySmall
+                bordered: true
+                onClicked: root.clearLocation()
+              }
             }
           }
         }

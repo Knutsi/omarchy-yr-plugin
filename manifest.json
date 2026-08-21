@@ -14,7 +14,7 @@
   },
   "barWidget": {
     "displayName": "Yr weather",
-    "description": "Current conditions and 3-day forecast from api.met.no",
+    "description": "Current conditions, hourly graph and 4-day forecast from api.met.no",
     "category": "Info",
     "allowMultiple": false,
     "defaultSection": "center",

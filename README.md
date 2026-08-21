@@ -2,7 +2,7 @@
 
 yr.no weather for the [Omarchy](https://omarchy.org) bar. A theme-tinted
 Nerd Font glyph and the temperature in the bar, with a popup showing the
-current conditions, a yr-style hour-by-hour graph, and a five-day forecast —
+current conditions, a yr-style hour-by-hour graph, and a four-day forecast —
 all from **MET Norway's** Locationforecast API, the same data that powers
 [yr.no](https://www.yr.no).
 
@@ -16,8 +16,10 @@ The popup, top to bottom:
    button), condition, wind / humidity / rain in the coming hour.
 2. **Next 24 hours** — symbols along the top, temperature curve,
    precipitation bars with amounts, hour labels.
-3. **Next 5 days** — symbol, day, high / low.
-4. **Settings** — `°C | °F | K`, `Location`, `Refresh`.
+3. **Next 4 days** — symbol, day, high / low.
+4. **Settings** — `°C | °F | K` and `Location`, which opens a search view
+   in place of the whole popup: type a city, pick a match, or go back to
+   automatic (IP-based) location.
 
 Plugin id: `knutsi.weather-yr`. Requires Omarchy 4.0 or newer (the
 Quickshell-based shell with third-party plugin support).
@@ -49,9 +51,9 @@ Update later with `omarchy plugin update knutsi.weather-yr`; remove with
 | Left click | Open / close the popup |
 | Middle click | Force a refresh (re-detects the location too) |
 | Right click | Desktop notification with the current conditions |
-| Click the location name or its 🔍 button (or the `Location` settings button) | Search for a city: type, pick with ↑/↓ + Enter or click, Esc to cancel, ✕ to go back to auto-detect |
+| Click the location name, its 🔍 button, or the `Location` settings button | Opens the search view: type a city, pick with ↑/↓ + Enter or click; Esc / ✕ goes back; "Use automatic location" returns to IP auto-detect |
 | `°C` / `°F` / `K` buttons, or click the unit next to the big temperature | Switch units (persisted in shell.json) |
-| `Refresh` button | Fetch the forecast again (also re-detects the IP location) |
+| Click the "updated HH:MM" stamp | Fetch the forecast again (also re-detects the IP location) |
 | Tab / Shift-Tab in the popup | Move to the neighbouring bar panel |
 
 IPC, e.g. for keybindings:
