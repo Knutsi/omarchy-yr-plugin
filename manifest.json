@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "id": "knutsi.weather-yr",
+  "name": "Yr weather",
+  "version": "0.1.0",
+  "author": "Knut Åbjørsbråten",
+  "license": "MIT",
+  "description": "yr.no / MET Norway weather pill with detail popup",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "Yr weather",
+    "description": "Current conditions and 3-day forecast from api.met.no",
+    "category": "Info",
+    "allowMultiple": false,
+    "defaultSection": "center",
+    "defaults": {
+      "refreshMinutes": 15,
+      "unit": "metric",
+      "barFormat": "icon-temp",
+      "graphHours": 24
+    },
+    "schema": [
+      {
+        "key": "refreshMinutes",
+        "type": "integer",
+        "label": "Refresh (minutes)",
+        "description": "MET Norway asks clients to poll at most every 10 minutes",
+        "min": 10,
+        "max": 180,
+        "defaultValue": 15
+      },
+      {
+        "key": "unit",
+        "type": "string",
+        "label": "Units",
+        "description": "metric (°C, m/s, mm), imperial (°F, mph, in) or kelvin",
+        "defaultValue": "metric"
+      },
+      {
+        "key": "barFormat",
+        "type": "string",
+        "label": "Bar format",
+        "description": "icon-temp or icon",
+        "defaultValue": "icon-temp"
+      },
+      {
+        "key": "graphHours",
+        "type": "integer",
+        "label": "Graph hours",
+        "description": "Hours shown in the hour-by-hour graph",
+        "min": 6,
+        "max": 48,
+        "defaultValue": 24
+      }
+    ]
+  }
+}
