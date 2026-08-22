@@ -98,11 +98,63 @@ Item {
   function rememberPlace(place) { savePlaces(Model.rememberPlace(places, place)) }
   function togglePin(place) { savePlaces(Model.togglePin(places, place)) }
 
-  // ---- The same forecast on yr.no, for the location in use. The URL is
-  //      numbers and literals only, and it is launched as argv (no shell).
+  // ---- The same forecast on yr.no, for the location in use: the place's
+  //      own page when yr's register knows it (found by the name in use,
+  //      then by the nearest town), the coordinate page otherwise. The URL
+  //      is literals plus a validated id or two numbers, launched as argv
+  //      (no shell). Lookups are bounded by curl's timeout and cached per
+  //      location for the session; a failure just means coordinates.
+  property var siteCache: ({})
+  property bool siteBusy: false
+  property var sitePending: null     // the click being resolved: { latitude, longitude, name, cacheKey }
+
   function openSite() {
-    var cmd = Model.browserCommand(Model.yrUrl(locationService.effective.latitude, locationService.effective.longitude, Qt.locale().name))
+    if (!locationService.hasLocation) return
+    var loc = locationService.effective
+    var pending = { latitude: loc.latitude, longitude: loc.longitude, name: locationService.displayName }
+    pending.cacheKey = locationService.key + "|" + pending.name
+    if (siteCache[pending.cacheKey] !== undefined) { launchSite(pending, siteCache[pending.cacheKey]); return }
+    if (siteBusy) return
+    sitePending = pending
+    siteBusy = true
+    var byName = Model.yrSearchCommand(pending.name)
+    if (byName) siteRequest.start(byName, "name")
+    else startNearbySite()
+  }
+
+  function startNearbySite() {
+    var cmd = Model.yrNearbyCommand(sitePending.latitude, sitePending.longitude)
+    if (cmd) siteRequest.start(cmd, "nearby")
+    else finishSite("")
+  }
+
+  function finishSite(id) {
+    var pending = sitePending
+    sitePending = null
+    siteBusy = false
+    if (!pending) return
+    var cache = siteCache
+    cache[pending.cacheKey] = id
+    siteCache = cache
+    launchSite(pending, id)
+  }
+
+  function launchSite(pending, id) {
+    var cmd = Model.browserCommand(Model.yrUrl(pending.latitude, pending.longitude, Qt.locale().name, id))
     if (cmd) Quickshell.execDetached(cmd)
+  }
+
+  CurlRequest {
+    id: siteRequest
+    onFinished: function(tag, stdout, exitCode) {
+      var pending = root.sitePending
+      if (!pending) return
+      var id = exitCode === 0
+        ? Model.pickYrLocation(Model.parseYrLocations(stdout), pending.latitude, pending.longitude, tag === "name" ? pending.name : "")
+        : ""
+      if (id === "" && tag === "name") { root.startNearbySite(); return }
+      root.finishSite(id)
+    }
   }
 
   CurlRequest {
@@ -142,6 +194,7 @@ Item {
         unit: weatherService.unit,
         textForecast: weatherService.textForecastEnabled,
         places: root.places.length,
+        siteBusy: root.siteBusy,
         pendingSettings: root.settingsQueue.length,
         settingsError: root.settingsError
       })

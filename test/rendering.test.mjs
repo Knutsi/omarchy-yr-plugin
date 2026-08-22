@@ -59,15 +59,16 @@ const PAYLOADS = [
   NUL + ESC + "[31m" + NEL
 ]
 
-// Every string in the body is tainted except GeoJSON's structural "type"
-// ("Feature", "Polygon"), which is matched, never shown — tainting it would
-// make the parser drop every feature and the probe check nothing.
+// Every string in the body is tainted except the structural keys that are
+// matched, never shown: GeoJSON's "type" ("Feature", "Polygon") and "id"
+// (yr location ids must match ^[0-9]{1,2}-[0-9]{1,10}$) — tainting those
+// would make the parser drop every row and the probe check nothing.
 function taint(value, payload) {
   if (typeof value === "string") return payload + value + payload
   if (Array.isArray(value)) return value.map(v => taint(v, payload))
   if (value && typeof value === "object") {
     const out = {}
-    for (const key of Object.keys(value)) out[key] = key === "type" ? value[key] : taint(value[key], payload)
+    for (const key of Object.keys(value)) out[key] = key === "type" || key === "id" ? value[key] : taint(value[key], payload)
     return out
   }
   return value
@@ -102,7 +103,8 @@ test("no parser lets markup or control characters through to a rendered string",
     ["parseKartverketPoint", "kartverket-punkt.json", raw => Model.parseKartverketPoint(raw), r => r.length > 0],
     ["parseIpLocation", JSON.stringify(ipBody), raw => Model.parseIpLocation(raw), r => r.latitude !== null],
     ["parseLocationFile", JSON.stringify(weatherJson), raw => Model.parseLocationFile(raw), r => r.latitude !== null],
-    ["parsePlaces", JSON.stringify([{ name: "Oslo", description: "Oslo, Norway", latitude: 59.91, longitude: 10.75, pinned: true }]), raw => Model.parsePlaces(raw), r => r.length === 1]
+    ["parsePlaces", JSON.stringify([{ name: "Oslo", description: "Oslo, Norway", latitude: 59.91, longitude: 10.75, pinned: true }]), raw => Model.parsePlaces(raw), r => r.length === 1],
+    ["parseYrLocations", "yr-search-honefoss.json", raw => Model.parseYrLocations(raw), r => r.length >= 1]
   ]
   for (const [label, body, parse, populated] of probes) {
     const clean = body.endsWith(".json") ? fixture(body) : body

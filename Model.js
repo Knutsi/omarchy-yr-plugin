@@ -703,16 +703,104 @@ function yrLanguage(localeName) {
   return "en"
 }
 
-function yrUrl(latitude, longitude, localeName) {
+// With a yr location id the page is the place's own (yr redirects
+// ".../daily-table/1-84687" to its full named path); without one, or with
+// anything that is not exactly an id, the coordinate page.
+function yrUrl(latitude, longitude, localeName, id) {
   var coords = validCoords(latitude, longitude)
   if (!coords) return ""
-  return YR_SITE + YR_PATHS[yrLanguage(localeName)] + coords.latitude + "," + coords.longitude
+  var target = YR_ID.test(String(id === undefined || id === null ? "" : id)) ? String(id) : coords.latitude + "," + coords.longitude
+  return YR_SITE + YR_PATHS[yrLanguage(localeName)] + target
 }
 
 function browserCommand(url) {
   var target = String(url || "")
   if (target.indexOf(YR_SITE) !== 0 || /[^A-Za-z0-9%\/.,\-]/.test(target.slice(YR_SITE.length))) return null
   return ["omarchy-launch-browser", target]
+}
+
+// ---- yr's own location register, so the globe can open the place's page
+//      rather than a bare-coordinate one. This is the site's own API (what
+//      yr.no's pages call), not a published one: anything unexpected —
+//      a changed shape, an error, a timeout — means the coordinate page.
+//      Two lookups: by the place name in use (never the typed search text),
+//      then by the same rounded coordinates api.met.no already receives.
+var YR_LOCATIONS_API = "https://www.yr.no/api/v0/locations/search"
+var YR_ID = /^[0-9]{1,2}-[0-9]{1,10}$/
+var YR_CATEGORY = /^[A-Z]{2}[0-9]{2}$/
+var YR_MATCH_KM = 5       // a name hit further from the coordinates is a different place
+var YR_NEARBY_KM = 2      // the nearest populated place must be this close
+var YR_MAX_ROWS = 50
+
+// Null for no name, or a "name" that is really coordinates ("59.91, 10.75 (approx.)").
+function yrSearchCommand(name) {
+  var q = plainText(name).replace(/^\s+|\s+$/g, "").slice(0, MAX_QUERY_CHARS)
+  if (q === "" || /^-?[0-9]/.test(q)) return null
+  return curlCommand(YR_LOCATIONS_API + "?q=" + encodeURIComponent(q) + "&language=en")
+}
+
+function yrNearbyCommand(latitude, longitude) {
+  var coords = validCoords(latitude, longitude)
+  if (!coords) return null
+  return curlCommand(YR_LOCATIONS_API + "?lat=" + coords.latitude + "&lon=" + coords.longitude + "&language=en")
+}
+
+// Rows with an id shaped exactly like a yr id and a position on the globe;
+// anything else is dropped, garbage gives [].
+function parseYrLocations(raw) {
+  if (responseTooLarge(raw, MAX_BYTES_LOOKUP)) return []
+  try {
+    var data = JSON.parse(String(raw || ""))
+    var rows = toArray(data && data._embedded ? data._embedded.location : null) || []
+    var out = []
+    for (var i = 0; i < rows.length && out.length < YR_MAX_ROWS; i++) {
+      var row = rows[i]
+      if (!row || typeof row !== "object") continue
+      var id = String(row.id === undefined || row.id === null ? "" : row.id)
+      var coords = row.position && typeof row.position === "object" ? validCoords(row.position.lat, row.position.lon) : null
+      if (!YR_ID.test(id) || !coords) continue
+      var category = row.category && typeof row.category === "object" ? String(row.category.id || "") : ""
+      out.push({ id: id, name: plainText(row.name).replace(/^\s+|\s+$/g, ""),
+                 latitude: coords.latitude, longitude: coords.longitude,
+                 category: YR_CATEGORY.test(category) ? category : "" })
+    }
+    return out
+  } catch (e) {
+    return []
+  }
+}
+
+// Equirectangular — fine for "is this hit the same place".
+function distanceKm(aLat, aLon, bLat, bLon) {
+  var dLat = (bLat - aLat) * 111.32
+  var dLon = (bLon - aLon) * 111.32 * Math.cos((aLat + bLat) / 2 * Math.PI / 180)
+  return Math.sqrt(dLat * dLat + dLon * dLon)
+}
+
+// The id to open for a position, or "" for the coordinate page. With a name
+// (a name search): the best hit within YR_MATCH_KM — an exact name first,
+// then a populated place (category C*), then the nearest. Without one (a
+// nearest search, which in a town lists streets and bridges first): the
+// nearest populated place within YR_NEARBY_KM; a street or a waterfall is
+// never "the place".
+function pickYrLocation(rows, latitude, longitude, name) {
+  var coords = validCoords(latitude, longitude)
+  var list = toArray(rows) || []
+  if (!coords || !list.length) return ""
+  var wanted = normalizeName(name || "")
+  var limit = wanted ? YR_MATCH_KM : YR_NEARBY_KM
+  var best = null, bestRank = -1
+  for (var i = 0; i < list.length; i++) {
+    var row = list[i]
+    if (!row || typeof row !== "object" || !YR_ID.test(String(row.id || ""))) continue
+    var km = distanceKm(coords.latitude, coords.longitude, row.latitude, row.longitude)
+    if (!(km <= limit)) continue
+    var populated = /^C/.test(String(row.category || ""))
+    if (!wanted && !populated) continue
+    var rank = (wanted && normalizeName(row.name) === wanted ? 2 : 0) + (populated ? 1 : 0)
+    if (!best || rank > bestRank || (rank === bestRank && km < best.km)) { best = { id: String(row.id), km: km }; bestRank = rank }
+  }
+  return best ? best.id : ""
 }
 
 // ---------------------------------------------------------------------------
@@ -1356,6 +1444,9 @@ if (typeof module !== "undefined") {
     // child processes and the yr.no link
     settingCommand: settingCommand, persistCommand: persistCommand, clearLocationCommand: clearLocationCommand,
     notificationCommand: notificationCommand, notificationHeadline: notificationHeadline, YR_SITE: YR_SITE, yrLanguage: yrLanguage, yrUrl: yrUrl, browserCommand: browserCommand,
+    YR_ID: YR_ID, YR_LOCATIONS_API: YR_LOCATIONS_API, YR_MATCH_KM: YR_MATCH_KM, YR_NEARBY_KM: YR_NEARBY_KM,
+    yrSearchCommand: yrSearchCommand, yrNearbyCommand: yrNearbyCommand, parseYrLocations: parseYrLocations,
+    distanceKm: distanceKm, pickYrLocation: pickYrLocation,
     GEOCLUE_PROBE_COMMAND: GEOCLUE_PROBE_COMMAND, TEXTFORECAST_URL: TEXTFORECAST_URL, GLYPH_UNAVAILABLE: GLYPH_UNAVAILABLE,
     refreshMinutes: refreshMinutes, graphHours: graphHours, settingBool: settingBool,
     // units and formatting

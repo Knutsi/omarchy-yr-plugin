@@ -51,9 +51,16 @@ External input is hostile. Anything that enters the long-lived shell process
   used to mean 260 000 graph ticks, 1e308 a `RangeError` in a binding;
 - **table lookups keyed by an external string use `hasOwnProperty`**
   (`symbol_code: "constructor_day"` once returned `function Object()`);
-- **URLs handed to a browser are numbers and literals only** (`yrUrl`), and
-  `browserCommand` refuses anything that is not one; the launch is argv via
-  `omarchy-launch-browser`. Never write the name of the init tool that
+- **URLs handed to a browser are literals plus numbers or a yr location id
+  matching `YR_ID`** (`yrUrl`), and `browserCommand` refuses anything that is
+  not one; the launch is argv via `omarchy-launch-browser`. yr facts that
+  shaped this (verified 2026-08-22): `…/daily-table/1-84687` redirects to
+  the full named path, so ids suffice and names are never needed; the ids
+  come only from yr's own site API (`/api/v0/locations/search`; Kartverket's
+  `stedsnummer` is unrelated, `2-<GeoNames id>` works only outside Norway);
+  `?q=` is ignored when `lat`/`lon` are given; a nearest-by-coordinates list
+  in a town is streets and bridges, so the name search comes first and the
+  nearest search accepts populated places (category `C*`) only. Never write the name of the init tool that
   launcher uses internally anywhere in the plugin (README included): the
   marketplace baseline flags the word itself as a review capability;
 - **no arrays through `omarchy bar set`**: `qs ipc call` spreads a JSON-array

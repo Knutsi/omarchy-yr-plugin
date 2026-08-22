@@ -10,9 +10,11 @@ All notable changes to this plugin are documented here. The format follows
   listed under it, and up to five places can be pinned to the top. Stored
   as a `places` array on the widget's `shell.json` entry, the way
   Omarchy's own widgets keep small state.
-- A globe button next to the location name opens the same forecast on
-  yr.no (Norwegian site for a Norwegian locale). The URL is built from the
-  rounded coordinates and fixed text only, and opened through
+- A globe button next to the location name opens the same location on
+  yr.no (Norwegian site for a Norwegian locale): the place's own page when
+  yr's register knows it — looked up by the name in use, then by the
+  nearest town — and a coordinate page otherwise. The URL is fixed text plus
+  a validated location id or the rounded coordinates, opened through
   `omarchy-launch-browser` as an argument list.
 ### Changed
 - Enter in an empty search box no longer switches to automatic location;

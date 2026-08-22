@@ -73,7 +73,7 @@ top to bottom:
 | Right click | Desktop notification with the current conditions |
 | Click the location name, its magnifier, or the `Location` button | Search view: the box opens empty with your saved places under it (pinned first, then the last five searches); pick one with ↑/↓ + Enter or a click, or type to search. Esc / ✕ goes back; "Use automatic location" returns to IP auto-detect |
 | Click the pin on a saved place | Pin it so it stays at the top of the list (up to five); click again to unpin. Recent searches beyond the last five fall off on their own |
-| Click the globe button | Open the same location's forecast on [yr.no](https://www.yr.no) in your default browser (Norwegian site for a Norwegian locale, English otherwise) |
+| Click the globe button | Open the same location on [yr.no](https://www.yr.no) in your default browser — the place's own page when yr's register knows it (looked up by the name in use, then by the nearest town), otherwise a coordinate page. Norwegian site for a Norwegian locale, English otherwise |
 | Click the satellite button | Locate with GPS / Wi-Fi positioning through GeoClue — see [docs/geoclue.md](docs/geoclue.md). Dimmed with an explanatory tooltip when the service is missing |
 | Click the "updated HH:MM" stamp | Fetch again (at most once per 10 s) |
 | Tab / Shift-Tab in the popup | Move to the neighbouring bar panel |
@@ -193,7 +193,7 @@ What leaves the machine, and when:
 | Data | Goes to | When |
 |---|---|---|
 | Your position, rounded to four decimals (~11 m) | api.met.no | Every refresh (forecast, warnings, tekstvarsel) |
-| The same rounded position | www.yr.no | Only when you click the globe button |
+| The place name in use, then (if that finds nothing) the same rounded position | www.yr.no | Only when you click the globe button, once per place per session |
 | Your public IP address (implicitly, as the requester) | ipwho.is, then get.geojs.io | Automatically, while no location is stored |
 | The text you type in the search box | geocoding-api.open-meteo.com, api.kartverket.no, photon.komoot.io | As you type, from two letters |
 | A GeoClue fix (coordinates) | photon.komoot.io; api.kartverket.no in Norway | Only after you press the satellite button |
@@ -201,12 +201,16 @@ What leaves the machine, and when:
 No identifiers other than the `User-Agent` (plugin name, version, repository
 URL — MET requires one) are sent anywhere.
 
-**The globe button, assessed.** The yr.no link is built from two numbers and
-fixed text — no name or other string from a server can enter it — and the
-URL is handed to Omarchy's own browser launcher as an argument, so there is
-nothing for a shell to interpret. The only thing it discloses is the rounded
-position, to the same organisation (MET Norway / NRK) that already receives
-it for every forecast, and only when you click.
+**The globe button, assessed.** The yr.no link is fixed text plus either a
+yr location id (accepted only if it is exactly `<digits>-<digits>`) or two
+numbers — no name or other string from a server can enter it — and the URL
+is handed to Omarchy's own browser launcher as an argument, so there is
+nothing for a shell to interpret. The id comes from yr's own site API (the
+one yr.no's pages use; not a published API, so if it changes or fails the
+button falls back to the coordinate page within a few seconds). What it
+discloses is the place name in use or the rounded position, to the same
+organisation (MET Norway / NRK) that already receives the position for every
+forecast, and only when you click.
 
 Optional, user-installed: [`geoclue`](https://archlinux.org/packages/extra/x86_64/geoclue/)
 enables the satellite button. The plugin only *detects* it; installing it is
@@ -214,6 +218,7 @@ your decision and command.
 
 Network services used at runtime (all HTTPS, no keys):
 [api.met.no](https://api.met.no/) (forecast, warnings, tekstvarsel),
+[www.yr.no](https://www.yr.no/) (the place's page id, on a globe click),
 [geocoding-api.open-meteo.com](https://open-meteo.com/en/docs/geocoding-api),
 [api.kartverket.no](https://api.kartverket.no/stedsnavn/v1/),
 [photon.komoot.io](https://photon.komoot.io), and for IP-based auto-detect

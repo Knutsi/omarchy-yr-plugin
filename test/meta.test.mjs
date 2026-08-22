@@ -49,7 +49,9 @@ test("every curl invocation carries a time bound and a size ceiling", () => {
     Model.reverseCommand(60.8274, 9.139),
     Model.kartverketPointCommand(60.8274, 9.139),
     ...Model.geocodeRequests("Sanderstølen").map(r => r.command),
-    ...Model.IP_LOCATION_URLS.map(url => Model.curlCommand(url))
+    ...Model.IP_LOCATION_URLS.map(url => Model.curlCommand(url)),
+    Model.yrSearchCommand("Oslo"),
+    Model.yrNearbyCommand(59.9127, 10.7461)
   ]
   assert.ok(commands.length >= 8, "the builder list above went stale")
   for (const argv of commands) {

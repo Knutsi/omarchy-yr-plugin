@@ -1,0 +1,297 @@
+{
+ "totalResults": 18,
+ "_embedded": {
+  "location": [
+   {
+    "category": {
+     "id": "CB09",
+     "name": "City – large town"
+    },
+    "id": "1-84687",
+    "name": "Hønefoss",
+    "position": {
+     "lat": 60.16592,
+     "lon": 10.25576
+    },
+    "elevation": 79,
+    "timeZone": "Europe/Oslo",
+    "urlPath": "Norway/Buskerud/Ringerike/Hønefoss",
+    "country": {
+     "id": "NO",
+     "name": "Norway"
+    },
+    "region": {
+     "id": "NO/33",
+     "name": "Buskerud"
+    },
+    "subregion": {
+     "id": "NO/33/3305",
+     "name": "Ringerike"
+    },
+    "isInOcean": false,
+    "hasOceanForecast": true
+   },
+   {
+    "category": {
+     "id": "SQ01",
+     "name": "Waterfall"
+    },
+    "id": "1-115211",
+    "name": "Hønefoss",
+    "position": {
+     "lat": 60.70461,
+     "lon": 10.17891
+    },
+    "elevation": 460,
+    "timeZone": "Europe/Oslo",
+    "urlPath": "Norway/Innlandet/Søndre Land/Hønefoss",
+    "country": {
+     "id": "NO",
+     "name": "Norway"
+    },
+    "region": {
+     "id": "NO/34",
+     "name": "Innlandet"
+    },
+    "subregion": {
+     "id": "NO/34/3447",
+     "name": "Søndre Land"
+    },
+    "isInOcean": false,
+    "hasOceanForecast": true
+   },
+   {
+    "category": {
+     "id": "EK11",
+     "name": "Mountain farm"
+    },
+    "id": "1-2669306",
+    "name": "Hønefoss",
+    "position": {
+     "lat": 59.71563,
+     "lon": 7.57649
+    },
+    "elevation": 883,
+    "timeZone": "Europe/Oslo",
+    "urlPath": "Norway/Telemark/Vinje/Hønefoss",
+    "country": {
+     "id": "NO",
+     "name": "Norway"
+    },
+    "region": {
+     "id": "NO/40",
+     "name": "Telemark"
+    },
+    "subregion": {
+     "id": "NO/40/4036",
+     "name": "Vinje"
+    },
+    "isInOcean": false,
+    "hasOceanForecast": true
+   },
+   {
+    "category": {
+     "id": "EC03",
+     "name": "Meteorological station"
+    },
+    "id": "5-20280",
+    "name": "Hønefoss - Hverven",
+    "position": {
+     "lat": 60.14033,
+     "lon": 10.26617
+    },
+    "elevation": 126,
+    "timeZone": "Europe/Oslo",
+    "urlPath": "Norway/Buskerud/Ringerike/Hønefoss - Hverven",
+    "country": {
+     "id": "NO",
+     "name": "Norway"
+    },
+    "region": {
+     "id": "NO/33",
+     "name": "Buskerud"
+    },
+    "subregion": {
+     "id": "NO/33/3305",
+     "name": "Ringerike"
+    },
+    "isInOcean": false,
+    "hasOceanForecast": true
+   },
+   {
+    "category": {
+     "id": "EC03",
+     "name": "Meteorological station"
+    },
+    "id": "5-20301",
+    "name": "Hønefoss - Høyby",
+    "position": {
+     "lat": 60.1665,
+     "lon": 10.2478
+    },
+    "elevation": 140,
+    "timeZone": "Europe/Oslo",
+    "urlPath": "Norway/Buskerud/Ringerike/Hønefoss - Høyby",
+    "country": {
+     "id": "NO",
+     "name": "Norway"
+    },
+    "region": {
+     "id": "NO/33",
+     "name": "Buskerud"
+    },
+    "subregion": {
+     "id": "NO/33/3305",
+     "name": "Ringerike"
+    },
+    "isInOcean": false,
+    "hasOceanForecast": true
+   },
+   {
+    "category": {
+     "id": "EJ01",
+     "name": "Church"
+    },
+    "id": "1-2296249",
+    "name": "Hønefoss kirke",
+    "position": {
+     "lat": 60.16667,
+     "lon": 10.2603
+    },
+    "elevation": 79,
+    "timeZone": "Europe/Oslo",
+    "urlPath": "Norway/Buskerud/Ringerike/Hønefoss kirke",
+    "country": {
+     "id": "NO",
+     "name": "Norway"
+    },
+    "region": {
+     "id": "NO/33",
+     "name": "Buskerud"
+    },
+    "subregion": {
+     "id": "NO/33/3305",
+     "name": "Ringerike"
+    },
+    "isInOcean": false,
+    "hasOceanForecast": true
+   },
+   {
+    "category": {
+     "id": "KN01",
+     "name": "Track"
+    },
+    "id": "10-1088973",
+    "name": "Hønefoss elvelangs",
+    "position": {
+     "lat": 60.16587,
+     "lon": 10.26349
+    },
+    "elevation": 66,
+    "timeZone": "Europe/Oslo",
+    "urlPath": "Norway/Buskerud/Ringerike/Hønefoss elvelangs",
+    "country": {
+     "id": "NO",
+     "name": "Norway"
+    },
+    "region": {
+     "id": "NO/33",
+     "name": "Buskerud"
+    },
+    "subregion": {
+     "id": "NO/33/3305",
+     "name": "Ringerike"
+    },
+    "isInOcean": false,
+    "hasOceanForecast": true
+   },
+   {
+    "category": {
+     "id": "ES01",
+     "name": "Power station"
+    },
+    "id": "2-7290000",
+    "name": "Hønefoss Railway Converter Station",
+    "position": {
+     "lat": 60.19918,
+     "lon": 10.15304
+    },
+    "elevation": 158,
+    "timeZone": "Europe/Oslo",
+    "urlPath": "Norway/Buskerud/Ringerike/Hønefoss Railway Converter Station",
+    "country": {
+     "id": "NO",
+     "name": "Norway"
+    },
+    "region": {
+     "id": "NO/33",
+     "name": "Buskerud"
+    },
+    "subregion": {
+     "id": "NO/33/3305",
+     "name": "Ringerike"
+    },
+    "isInOcean": false,
+    "hasOceanForecast": true
+   },
+   {
+    "category": {
+     "id": "KC31",
+     "name": "Bridge"
+    },
+    "id": "1-2603113",
+    "name": "Hønefoss bru",
+    "position": {
+     "lat": 60.16914,
+     "lon": 10.25742
+    },
+    "elevation": 68,
+    "timeZone": "Europe/Oslo",
+    "urlPath": "Norway/Buskerud/Ringerike/Hønefoss bru",
+    "country": {
+     "id": "NO",
+     "name": "Norway"
+    },
+    "region": {
+     "id": "NO/33",
+     "name": "Buskerud"
+    },
+    "subregion": {
+     "id": "NO/33/3305",
+     "name": "Ringerike"
+    },
+    "isInOcean": false,
+    "hasOceanForecast": true
+   },
+   {
+    "category": {
+     "id": "KL01",
+     "name": "Bus station"
+    },
+    "id": "11-16961",
+    "name": "Hønefoss sentrum",
+    "position": {
+     "lat": 60.16522,
+     "lon": 10.25748
+    },
+    "elevation": 78,
+    "timeZone": "Europe/Oslo",
+    "urlPath": "Norway/Buskerud/Ringerike/Hønefoss sentrum",
+    "country": {
+     "id": "NO",
+     "name": "Norway"
+    },
+    "region": {
+     "id": "NO/33",
+     "name": "Buskerud"
+    },
+    "subregion": {
+     "id": "NO/33/3305",
+     "name": "Ringerike"
+    },
+    "isInOcean": false,
+    "hasOceanForecast": true
+   }
+  ]
+ }
+}

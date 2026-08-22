@@ -145,9 +145,9 @@ Item {
       // The same forecast on yr.no, in the default browser.
       PanelActionButton {
         anchors.verticalCenter: parent.verticalCenter
-        iconText: "󰖟"   // nf-md-web
-        tooltipText: "Open on yr.no"
-        enabled: root.location.hasLocation
+        iconText: root.service.siteBusy ? "󰦖" : "󰖟"   // spinner while yr's register is asked / nf-md-web
+        tooltipText: root.service.siteBusy ? "Finding the place on yr.no…" : "Open on yr.no"
+        enabled: root.location.hasLocation && !root.service.siteBusy
         foreground: root.location.hasLocation ? root.foreground : Qt.darker(root.foreground, 1.4)
         fontFamily: root.fontFamily
         fontSize: Style.font.bodySmall

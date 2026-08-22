@@ -1,0 +1,297 @@
+{
+ "totalResults": 20,
+ "_embedded": {
+  "location": [
+   {
+    "category": {
+     "id": "SQ01",
+     "name": "Waterfall"
+    },
+    "id": "1-2330077",
+    "name": "Hønefossen",
+    "position": {
+     "lat": 60.16954,
+     "lon": 10.25374
+    },
+    "elevation": 83,
+    "timeZone": "Europe/Oslo",
+    "urlPath": "Norway/Buskerud/Ringerike/Hønefossen",
+    "country": {
+     "id": "NO",
+     "name": "Norway"
+    },
+    "region": {
+     "id": "NO/33",
+     "name": "Buskerud"
+    },
+    "subregion": {
+     "id": "NO/33/3305",
+     "name": "Ringerike"
+    },
+    "isInOcean": false,
+    "hasOceanForecast": true
+   },
+   {
+    "category": {
+     "id": "KC02",
+     "name": "Road"
+    },
+    "id": "1-2328608",
+    "name": "Molvaldgata",
+    "position": {
+     "lat": 60.17077,
+     "lon": 10.25491
+    },
+    "elevation": 79,
+    "timeZone": "Europe/Oslo",
+    "urlPath": "Norway/Buskerud/Ringerike/Molvaldgata",
+    "country": {
+     "id": "NO",
+     "name": "Norway"
+    },
+    "region": {
+     "id": "NO/33",
+     "name": "Buskerud"
+    },
+    "subregion": {
+     "id": "NO/33/3305",
+     "name": "Ringerike"
+    },
+    "isInOcean": false,
+    "hasOceanForecast": true
+   },
+   {
+    "category": {
+     "id": "EK81",
+     "name": "Park"
+    },
+    "id": "10-1082027",
+    "name": "Nordre park",
+    "position": {
+     "lat": 60.17022,
+     "lon": 10.25727
+    },
+    "elevation": 78,
+    "timeZone": "Europe/Oslo",
+    "urlPath": "Norway/Buskerud/Ringerike/Nordre park",
+    "country": {
+     "id": "NO",
+     "name": "Norway"
+    },
+    "region": {
+     "id": "NO/33",
+     "name": "Buskerud"
+    },
+    "subregion": {
+     "id": "NO/33/3305",
+     "name": "Ringerike"
+    },
+    "isInOcean": false,
+    "hasOceanForecast": true
+   },
+   {
+    "category": {
+     "id": "KC02",
+     "name": "Road"
+    },
+    "id": "1-2296125",
+    "name": "Hammerbrogate",
+    "position": {
+     "lat": 60.17034,
+     "lon": 10.25741
+    },
+    "elevation": 78,
+    "timeZone": "Europe/Oslo",
+    "urlPath": "Norway/Buskerud/Ringerike/Hammerbrogate",
+    "country": {
+     "id": "NO",
+     "name": "Norway"
+    },
+    "region": {
+     "id": "NO/33",
+     "name": "Buskerud"
+    },
+    "subregion": {
+     "id": "NO/33/3305",
+     "name": "Ringerike"
+    },
+    "isInOcean": false,
+    "hasOceanForecast": true
+   },
+   {
+    "category": {
+     "id": "KC02",
+     "name": "Road"
+    },
+    "id": "10-1036385",
+    "name": "Wiels gate",
+    "position": {
+     "lat": 60.17063,
+     "lon": 10.25739
+    },
+    "elevation": 79,
+    "timeZone": "Europe/Oslo",
+    "urlPath": "Norway/Buskerud/Ringerike/Wiels gate",
+    "country": {
+     "id": "NO",
+     "name": "Norway"
+    },
+    "region": {
+     "id": "NO/33",
+     "name": "Buskerud"
+    },
+    "subregion": {
+     "id": "NO/33/3305",
+     "name": "Ringerike"
+    },
+    "isInOcean": false,
+    "hasOceanForecast": true
+   },
+   {
+    "category": {
+     "id": "KC31",
+     "name": "Bridge"
+    },
+    "id": "1-2603113",
+    "name": "Hønefoss bru",
+    "position": {
+     "lat": 60.16914,
+     "lon": 10.25742
+    },
+    "elevation": 68,
+    "timeZone": "Europe/Oslo",
+    "urlPath": "Norway/Buskerud/Ringerike/Hønefoss bru",
+    "country": {
+     "id": "NO",
+     "name": "Norway"
+    },
+    "region": {
+     "id": "NO/33",
+     "name": "Buskerud"
+    },
+    "subregion": {
+     "id": "NO/33/3305",
+     "name": "Ringerike"
+    },
+    "isInOcean": false,
+    "hasOceanForecast": true
+   },
+   {
+    "category": {
+     "id": "KC02",
+     "name": "Road"
+    },
+    "id": "1-2296136",
+    "name": "Hønefoss bru",
+    "position": {
+     "lat": 60.16868,
+     "lon": 10.257
+    },
+    "elevation": 73,
+    "timeZone": "Europe/Oslo",
+    "urlPath": "Norway/Buskerud/Ringerike/Hønefoss bru",
+    "country": {
+     "id": "NO",
+     "name": "Norway"
+    },
+    "region": {
+     "id": "NO/33",
+     "name": "Buskerud"
+    },
+    "subregion": {
+     "id": "NO/33/3305",
+     "name": "Ringerike"
+    },
+    "isInOcean": false,
+    "hasOceanForecast": true
+   },
+   {
+    "category": {
+     "id": "KC02",
+     "name": "Road"
+    },
+    "id": "10-1089818",
+    "name": "Pottemakerbakken",
+    "position": {
+     "lat": 60.16979,
+     "lon": 10.25826
+    },
+    "elevation": 70,
+    "timeZone": "Europe/Oslo",
+    "urlPath": "Norway/Buskerud/Ringerike/Pottemakerbakken",
+    "country": {
+     "id": "NO",
+     "name": "Norway"
+    },
+    "region": {
+     "id": "NO/33",
+     "name": "Buskerud"
+    },
+    "subregion": {
+     "id": "NO/33/3305",
+     "name": "Ringerike"
+    },
+    "isInOcean": false,
+    "hasOceanForecast": true
+   },
+   {
+    "category": {
+     "id": "KC02",
+     "name": "Road"
+    },
+    "id": "1-2330027",
+    "name": "Lagesens gate",
+    "position": {
+     "lat": 60.17146,
+     "lon": 10.2556
+    },
+    "elevation": 87,
+    "timeZone": "Europe/Oslo",
+    "urlPath": "Norway/Buskerud/Ringerike/Lagesens gate",
+    "country": {
+     "id": "NO",
+     "name": "Norway"
+    },
+    "region": {
+     "id": "NO/33",
+     "name": "Buskerud"
+    },
+    "subregion": {
+     "id": "NO/33/3305",
+     "name": "Ringerike"
+    },
+    "isInOcean": false,
+    "hasOceanForecast": true
+   },
+   {
+    "category": {
+     "id": "KC02",
+     "name": "Road"
+    },
+    "id": "1-2330024",
+    "name": "Blyberggata",
+    "position": {
+     "lat": 60.1714,
+     "lon": 10.25645
+    },
+    "elevation": 89,
+    "timeZone": "Europe/Oslo",
+    "urlPath": "Norway/Buskerud/Ringerike/Blyberggata",
+    "country": {
+     "id": "NO",
+     "name": "Norway"
+    },
+    "region": {
+     "id": "NO/33",
+     "name": "Buskerud"
+    },
+    "subregion": {
+     "id": "NO/33/3305",
+     "name": "Ringerike"
+    },
+    "isInOcean": false,
+    "hasOceanForecast": true
+   }
+  ]
+ }
+}
