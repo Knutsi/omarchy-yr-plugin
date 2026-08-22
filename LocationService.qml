@@ -48,17 +48,40 @@ Item {
   readonly property string gpsHelp: Model.gpsStateHelp(gpsState)
 
   // ------------------------------------------------------------------
-  // weather.json
+  // weather.json — watched by a FileView that never loads it (preload: false,
+  // text() is never called); the bytes come through `head -c <cap+1>`, so
+  // at most the ceiling enters the shell (marketplace finding #3). The
+  // parser's own ceiling is the second layer.
   // ------------------------------------------------------------------
+  readonly property string locationPath: Quickshell.env("HOME") + "/.local/state/omarchy/settings/weather.json"
+  property bool rereadPending: false
+
   FileView {
-    id: locationFile
-    path: Quickshell.env("HOME") + "/.local/state/omarchy/settings/weather.json"
+    id: locationWatch
+    path: root.locationPath
     watchChanges: true
+    preload: false
     printErrors: false
-    onFileChanged: reload()
-    onLoaded: root.applyFile(text())
-    onLoadFailed: root.applyFile("")
+    onFileChanged: root.reload()
   }
+
+  function reload() {
+    if (fileRequest.running) { rereadPending = true; return }
+    var argv = Model.readFileCommand(locationPath, Model.LOCATION_FILE_MAX)
+    if (!argv) { applyFile(""); return }
+    fileRequest.start(argv, "read")
+  }
+
+  CurlRequest {
+    id: fileRequest
+    onFinished: function(tag, stdout, exitCode) {
+      // A missing file is exit 1 with nothing on stdout — the "auto-detect" case.
+      root.applyFile(exitCode === 0 ? stdout : "")
+      if (root.rereadPending) { root.rereadPending = false; root.reload() }
+    }
+  }
+
+  Component.onCompleted: reload()
 
   function applyFile(text) {
     var next = Model.parseLocationFile(text)
@@ -73,11 +96,9 @@ Item {
     else if (!Model.hasCoordinates(detected)) detect(false)
   }
 
-  function reload() { locationFile.reload() }
-
   // The first read can race shell startup; reload once more, and give up
   // waiting after a few seconds so a missing file never blocks the forecast.
-  Timer { interval: 1500; running: true; onTriggered: locationFile.reload() }
+  Timer { interval: 1500; running: true; onTriggered: root.reload() }
   Timer { interval: 5000; running: !root.settled; onTriggered: { if (!root.settled) root.applyFile("") } }
 
   // ------------------------------------------------------------------
@@ -184,6 +205,7 @@ Item {
 
   CurlRequest {
     id: saveRequest
+    collect: false      // only the exit code matters
     onFinished: function(tag, stdout, exitCode) {
       if (exitCode !== 0) {
         root.saveState = "idle"
@@ -191,7 +213,7 @@ Item {
         root.saveFailed(root.saveError)
         return
       }
-      locationFile.reload()
+      root.reload()
       // Same coordinates as before (re-picking the current place, or only the
       // name changed): the key does not change, so no forecast is fetched and
       // none would ever "arrive" — the save is complete as soon as it is written.

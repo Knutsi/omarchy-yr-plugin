@@ -691,6 +691,18 @@ function persistCommand(name, latitude, longitude) {
           formatCoord(coords.latitude) + "," + formatCoord(coords.longitude)]
 }
 
+// A file is read through `head -c`, never through FileView.text(): the bytes
+// that enter the shell are capped before they are allocated (marketplace
+// finding #3). One byte more than the ceiling is requested on purpose, so an
+// oversized file still trips the parser's responseTooLarge() instead of
+// being truncated into a valid-looking prefix.
+var LOCATION_FILE_MAX = MAX_BYTES_LOOKUP
+function readFileCommand(path, maxBytes) {
+  var target = String(path || "")
+  if (target === "") return null
+  return ["timeout", String(CHILD_TIMEOUT_S), "head", "-c", String((maxBytes || LOCATION_FILE_MAX) + 1), target]
+}
+
 function clearLocationCommand() {
   return ["timeout", String(CHILD_TIMEOUT_S), "omarchy-weather-location", "--clear"]
 }
@@ -1469,6 +1481,7 @@ if (typeof module !== "undefined") {
     neighbourPinned: neighbourPinned,
     // child processes and the yr.no link
     settingCommand: settingCommand, persistCommand: persistCommand, clearLocationCommand: clearLocationCommand,
+    readFileCommand: readFileCommand, LOCATION_FILE_MAX: LOCATION_FILE_MAX,
     notificationCommand: notificationCommand, notificationHeadline: notificationHeadline, YR_SITE: YR_SITE, yrLanguage: yrLanguage, yrUrl: yrUrl, browserCommand: browserCommand,
     YR_ID: YR_ID, YR_LOCATIONS_API: YR_LOCATIONS_API, YR_MATCH_KM: YR_MATCH_KM, YR_NEARBY_KM: YR_NEARBY_KM,
     yrSearchCommand: yrSearchCommand, yrNearbyCommand: yrNearbyCommand, parseYrLocations: parseYrLocations,

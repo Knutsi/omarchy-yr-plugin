@@ -1,6 +1,10 @@
 import { test } from "node:test"
 import assert from "node:assert/strict"
 import { Model, fixture } from "./helpers/load.mjs"
+import { execFileSync } from "node:child_process"
+import { mkdtempSync, writeFileSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
 
 test("location file parsing matches omarchy-weather-location", () => {
   assert.deepEqual(Model.parseLocationFile('{"name":"Bergen","latitude":60.39,"longitude":5.32}'), { name: "Bergen", latitude: 60.39, longitude: 5.32 })
@@ -8,6 +12,32 @@ test("location file parsing matches omarchy-weather-location", () => {
   assert.deepEqual(Model.parseLocationFile(""), Model.emptyLocation())
   assert.equal(Model.hasCoordinates({ latitude: "59.9", longitude: "10.7" }), true)
   assert.equal(Model.hasCoordinates({ name: "Oslo" }), false)
+})
+
+test("the location file is read through a bounded process, never whole", () => {
+  const cmd = Model.readFileCommand("/x/weather.json", Model.LOCATION_FILE_MAX)
+  assert.deepEqual(cmd, ["timeout", String(Model.CHILD_TIMEOUT_S), "head", "-c", String(Model.LOCATION_FILE_MAX + 1), "/x/weather.json"])
+  assert.equal(Model.readFileCommand("", 10), null)
+  assert.equal(Model.readFileCommand(null), null)
+  assert.equal(Model.readFileCommand("/x")[4], String(Model.LOCATION_FILE_MAX + 1), "default ceiling")
+
+  // The real command against real files: whole when small, cap + 1 bytes
+  // when oversized (so the parser still refuses it), nothing when missing.
+  const dir = mkdtempSync(join(tmpdir(), "yr-plugin-read-"))
+  const run = argv => { try { return { out: execFileSync(argv[0], argv.slice(1), { encoding: "utf8", maxBuffer: 4 * Model.LOCATION_FILE_MAX }), code: 0 } } catch (e) { return { out: String(e.stdout || ""), code: e.status } } }
+  const small = join(dir, "small.json"); writeFileSync(small, '{"name":"Bergen","latitude":60.39,"longitude":5.32}')
+  const big = join(dir, "big.json"); writeFileSync(big, '{"name":"Bergen","latitude":60.39,"longitude":5.32,"pad":"' + "x".repeat(300 * 1024) + '"}')
+  const r1 = run(Model.readFileCommand(small, Model.LOCATION_FILE_MAX))
+  assert.equal(r1.code, 0)
+  assert.deepEqual(Model.parseLocationFile(r1.out), { name: "Bergen", latitude: 60.39, longitude: 5.32 })
+  const r2 = run(Model.readFileCommand(big, Model.LOCATION_FILE_MAX))
+  assert.equal(r2.code, 0)
+  assert.equal(Buffer.byteLength(r2.out), Model.LOCATION_FILE_MAX + 1, "exactly one byte over the ceiling leaves the file")
+  assert.deepEqual(Model.parseLocationFile(r2.out), Model.emptyLocation(), "…and the parser refuses it")
+  const r3 = run(Model.readFileCommand(join(dir, "missing.json"), Model.LOCATION_FILE_MAX))
+  assert.notEqual(r3.code, 0)
+  assert.equal(r3.out, "")
+  assert.deepEqual(Model.parseLocationFile(r3.out), Model.emptyLocation())
 })
 
 test("parseIpLocation accepts ipwho.is and geojs shapes", () => {

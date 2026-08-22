@@ -71,18 +71,20 @@ test("every child process is an argv array from a Model.js builder, bounded in t
   for (const file of readdirSync(dir).filter(f => f.endsWith(".qml"))) {
     const qml = readFileSync(new URL(file, dir), "utf8")
     assert.ok(!/\bbar\.run\(|\bUtil\.execDetached\(|shellQuote\(|"bash"|"sh",\s*"-c"/.test(qml), file + ": builds a shell command line")
-    assert.ok(!/\[\s*"(omarchy|omarchy-[a-z-]+|curl|timeout|sh)"/.test(qml), file + ": argv literal outside Model.js")
+    assert.ok(!/\[\s*"(omarchy|omarchy-[a-z-]+|curl|timeout|sh|head|cat)"/.test(qml), file + ": argv literal outside Model.js")
+    assert.ok(!/\.(text|data)\(\)/.test(qml) || file !== "LocationService.qml", file + ": FileView.text()/data() loads a whole file — read through readFileCommand() instead")
   }
   const source = readFileSync(new URL("../Model.js", import.meta.url), "utf8")
   assert.equal((source.match(/\["omarchy-launch-browser"/g) || []).length, 1)
   assert.equal((source.match(/\["omarchy-notification-send"/g) || []).length, 1)
-  assert.equal((source.match(/\["timeout"/g) || []).length, 4, "settingCommand, persistCommand, clearLocationCommand, GEOCLUE_PROBE_COMMAND")
+  assert.equal((source.match(/\["timeout"/g) || []).length, 5, "settingCommand, persistCommand, clearLocationCommand, readFileCommand, GEOCLUE_PROBE_COMMAND")
 
   const timed = [
     Model.settingCommand("io.github.knutsi.yr", "unit", "metric", false),
     Model.settingCommand("io.github.knutsi.yr", "textForecast", "true", true),   // scalars only: arrays cannot cross qs ipc
     Model.persistCommand("Oslo", 59.91273, 10.74609),
     Model.clearLocationCommand(),
+    Model.readFileCommand("/x/weather.json"),
     Model.GEOCLUE_PROBE_COMMAND
   ]
   for (const argv of timed) {

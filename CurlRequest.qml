@@ -7,10 +7,15 @@ import Quickshell.Io
 // (Qt.callLater), after Quickshell has cleared `running`, so a handler may
 // immediately start the next request on the same object — chaining from
 // StdioCollector.onStreamFinished or straight out of onExited is not safe.
+//
+// `collect: false` attaches no collector at all: the child's stdout is
+// discarded by Quickshell instead of being buffered in the shell — for
+// commands where only the exit code matters.
 Item {
   id: root
 
   property bool running: false
+  property bool collect: true
   readonly property string tag: proc.tag
 
   signal finished(string tag, string stdout, int exitCode)
@@ -29,13 +34,15 @@ Item {
     running = false
   }
 
+  StdioCollector { id: collector; waitForEnd: true }
+
   Process {
     id: proc
     property string tag: ""
-    stdout: StdioCollector { id: collector; waitForEnd: true }
+    stdout: root.collect ? collector : null
     onExited: function(exitCode) {
       var doneTag = proc.tag
-      var text = String(collector.text || "")
+      var text = root.collect ? String(collector.text || "") : ""
       Qt.callLater(function() {
         root.running = false
         root.finished(doneTag, text, exitCode)
