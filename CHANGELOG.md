@@ -8,6 +8,11 @@ All notable changes to this plugin are documented here. The format follows
 
 ## [0.3.2] — 2026-08-22
 
+### Added
+- CI: GitHub Actions runs the test suite on every push and pull request.
+- An invariant test: every curl invocation must carry both a time bound and a
+  size ceiling, and new curl argv literals in `Model.js` fail the build.
+
 ### Security
 - Every HTTP response is now size-capped — 256 KiB for the lookup services
   (geocoders, IP location, reverse lookup), 2 MiB for MET Norway — both at
