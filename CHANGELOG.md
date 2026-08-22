@@ -5,6 +5,8 @@ All notable changes to this plugin are documented here. The format follows
 [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
+
+## [0.4.1] — 2026-08-22
 ### Security
 - The shared location file is read through `head -c` (256 KiB + 1) by a
   bounded process; the `FileView` only watches it for changes and never
