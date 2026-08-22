@@ -8,7 +8,8 @@ All notable changes to this plugin are documented here. The format follows
 ### Added
 - ← / → (or h / l) in the popup switch the location between the pinned
   places, wrapping around; `nextPinned` / `previousPinned` IPC verbs do the
-  same for keybindings. The search view shows a tip once a place is pinned.- Saved places: the search box now opens empty with your last five searches
+  same for keybindings. The search view shows a tip once a place is pinned.
+- Saved places: the search box now opens empty with your last five searches
   listed under it, and up to five places can be pinned to the top. Stored
   as a `places` array on the widget's `shell.json` entry, the way
   Omarchy's own widgets keep small state.
@@ -17,17 +18,20 @@ All notable changes to this plugin are documented here. The format follows
   yr's register knows it — looked up by the name in use, then by the
   nearest town — and a coordinate page otherwise. The URL is fixed text plus
   a validated location id or the rounded coordinates, opened through
-  `omarchy-launch-browser` as an argument list.### Changed
+  `omarchy-launch-browser` as an argument list.
+### Changed
 - The popup keeps its layout while data loads: the graph, the days row and
   (in Norway) the tekstvarsel box reserve their final size with quiet
   placeholders, the status message lives in the graph area instead of
   pushing sections down, the hero's stats row is always there, and the bar
   pill shows a placeholder of the same shape instead of collapsing. Only
-  weather warnings still appear on demand.- Enter in an empty search box no longer switches to automatic location;
+  weather warnings still appear on demand.
+- Enter in an empty search box no longer switches to automatic location;
   "Use automatic location" is the only way back. Search text is capped at
   100 characters.
 - An unknown MET symbol code is only echoed as condition text when it is
-  shaped like one.### Security
+  shaped like one.
+### Security
 - Hardening ahead of further marketplace review: temperatures outside
   −100…70 °C are dropped before they can size the graph (one such value
   could previously stall a paint or throw inside a binding); MET symbol
