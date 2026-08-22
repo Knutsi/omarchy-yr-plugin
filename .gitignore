@@ -1,3 +1,10 @@
 node_modules/
 *.log
 .DS_Store
+# Qt/QML bytecode caches written next to sources in a live plugin dir
+*.qmlc
+*.jsc
+.qmlls.ini
+# merge leftovers
+*.orig
+*.rej

@@ -1,10 +1,15 @@
 {
   "name": "omarchy-yr-plugin",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "private": true,
-  "description": "yr.no (MET Norway) weather widget for the Omarchy bar",
+  "description": "Unofficial yr.no (MET Norway) weather widget for the Omarchy bar",
   "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
-    "test": "node --test"
+    "test": "node --test",
+    "lint": "qmllint -I \"${OMARCHY_PATH:-/usr/share/omarchy}/shell\" *.qml",
+    "validate": "omarchy plugin validate ."
   }
 }

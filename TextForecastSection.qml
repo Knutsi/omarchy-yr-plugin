@@ -1,14 +1,17 @@
 import QtQuick
 import qs.Commons
+import qs.Ui
 
 // Tekstvarsel: MET's written forecast for the user's Norwegian land region.
 // Today's text, then tomorrow's, in a box that scrolls when the text is long.
+// The texts are MET's (Norwegian); the chrome is English.
 Column {
   id: root
 
-  property var report: null          // Model.textForecastFor() output
+  property var report: null          // WeatherService.textReport
   property color foreground: Color.foreground
   property string fontFamily: Style.font.family
+  property real gutter: Style.space(16)
   property real maxBodyHeight: Style.space(120)
 
   readonly property color muted: Qt.darker(foreground, 1.5)
@@ -16,14 +19,12 @@ Column {
   spacing: Style.space(6)
   visible: !!report
 
-  Text {
+  PanelSectionHeader {
     anchors.left: parent.left
-    anchors.leftMargin: Style.space(16)
+    anchors.leftMargin: root.gutter
     text: "TEKSTVARSEL  ·  " + (root.report ? root.report.area.toUpperCase() : "")
-    color: root.muted
-    font.family: root.fontFamily
-    font.pixelSize: Style.font.caption
-    font.letterSpacing: 1
+    foreground: root.foreground
+    fontFamily: root.fontFamily
   }
 
   Item {
@@ -33,8 +34,8 @@ Column {
     Flickable {
       id: scroller
       anchors.fill: parent
-      anchors.leftMargin: Style.space(16)
-      anchors.rightMargin: Style.space(16)
+      anchors.leftMargin: root.gutter
+      anchors.rightMargin: root.gutter
       contentWidth: width
       contentHeight: body.implicitHeight
       clip: true
@@ -55,13 +56,11 @@ Column {
           wrapMode: Text.WordWrap
         }
 
-        Text {
+        PanelSectionHeader {
           visible: !!(root.report && root.report.tomorrow)
-          text: "I MORGEN"
-          color: root.muted
-          font.family: root.fontFamily
-          font.pixelSize: Style.font.caption
-          font.letterSpacing: 1
+          text: "TOMORROW"
+          foreground: root.foreground
+          fontFamily: root.fontFamily
         }
 
         Text {

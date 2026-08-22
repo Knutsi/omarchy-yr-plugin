@@ -1,0 +1,40 @@
+import { test } from "node:test"
+import assert from "node:assert/strict"
+import { Model, forecast, firstTime } from "./helpers/load.mjs"
+
+test("unit systems: metric by default, imperial and kelvin on request", () => {
+  assert.equal(Model.unitSystem(""), "metric")
+  assert.equal(Model.unitSystem(undefined), "metric")
+  assert.equal(Model.unitSystem(" Imperial "), "imperial")
+  assert.equal(Model.unitSystem("kelvin"), "kelvin")
+  assert.equal(Model.unitSystem("en_US"), "metric", "locale strings are not units")
+  assert.equal(Model.nextUnit("metric"), "imperial")
+  assert.equal(Model.nextUnit("kelvin"), "metric")
+  assert.equal(Model.convertTemp(17.2, "metric"), 17.2)
+  assert.equal(Math.round(Model.convertTemp(17.2, "imperial") * 10) / 10, 63)
+  assert.equal(Math.round(Model.convertTemp(17.2, "kelvin") * 100) / 100, 290.35)
+  assert.equal(Model.convertTemp(null, "metric"), null)
+})
+
+test("formatting", () => {
+  const c = Model.currentCondition(Model.currentEntry(forecast, firstTime))
+  assert.equal(Model.formatTemp(c.tempC, "metric"), "17°C")
+  assert.equal(Model.formatTemp(c.tempC, "imperial"), "63°F")
+  assert.equal(Model.formatTemp(c.tempC, "kelvin"), "290K")
+  assert.equal(Model.bareTemp(c.tempC, "metric"), "17°")
+  assert.equal(Model.bareTemp(c.tempC, "kelvin"), "290K")
+  assert.equal(Model.formatWind(c, "metric"), "3 m/s")
+  assert.equal(Model.formatWind(c, "kelvin"), "3 m/s")
+  assert.equal(Model.formatWind(c, "imperial"), "7 mph")
+  assert.equal(Model.formatPrecip(0.44, "metric"), "0.4 mm")
+  assert.equal(Model.formatPrecip(25.4, "imperial"), "1 in")
+  assert.equal(Model.formatPrecip(null, "metric"), "")
+  assert.equal(Model.bareTempForDay({ maxC: 21.6, minC: 11.2 }, "max", "metric"), "22°")
+  assert.equal(Model.bareTempForDay({ maxC: 21.6, minC: 11.2 }, "min", "imperial"), "52°")
+  assert.equal(Model.formatClock(new Date(2026, 7, 22, 7, 5)), "07:05")
+  assert.equal(Model.formatClock("garbage"), "")
+  assert.equal(Model.dayName("2026-08-23"), "Sunday")
+  assert.equal(Model.dayName("2026-08-23", d => d.getDay()), 0)
+  assert.equal(Model.dayName("nope"), "")
+  assert.equal(Model.dayName(""), "")
+})

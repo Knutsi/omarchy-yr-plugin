@@ -1,38 +1,12 @@
 # Yr.no (unofficial) — Omarchy weather plugin
 
-Unofficial yr.no weather for the [Omarchy](https://omarchy.org) bar — not
-affiliated with the Norwegian Meteorological Institute or NRK; it reads the
-same open MET Norway API that powers yr.no. A theme-tinted
-Nerd Font glyph and the temperature in the bar, with a popup showing the
-current conditions, a yr-style hour-by-hour graph, and a four-day forecast —
-all from **MET Norway's** Locationforecast API, the same data that powers
-[yr.no](https://www.yr.no).
+Unofficial yr.no weather for the [Omarchy](https://omarchy.org) bar, built on
+the open API of MET Norway — the Norwegian Meteorological Institute, whose
+data powers yr.no. Not affiliated with MET or NRK.
 
 ![Bar pill](docs/bar.png)
 
-![Popup: current weather, hourly graph with rain, four days, tekstvarsel, settings](docs/popup.png)
-
-![Search view: Open-Meteo and Kartverket matches, GPS button, back to automatic location](docs/search.png)
-
-The popup, top to bottom:
-
-1. **Current weather** — glyph, temperature and condition; location (with
-   search and GPS buttons), wind, humidity, sunrise and sunset (computed
-   locally from the coordinates — no extra API calls).
-2. **Weather warnings** (farevarsel) — MET's active alerts for the spot,
-   coloured by level; click one for the description and advice.
-3. **Next 24 hours** — symbols along the top, temperature curve,
-   precipitation bars with amounts, hour labels.
-4. **Next 4 days** — symbol, day, high / low.
-5. **Tekstvarsel** — MET's written forecast for the Norwegian land region
-   (today and tomorrow; scrolls when long). Norway only, Norwegian only;
-   hides itself elsewhere. Toggle with the  button.
-6. **Settings** — `°C | °F | K`, `Location` (opens the search view in place
-   of the whole popup), the tekstvarsel toggle, the MET attribution and the
-   "updated HH:MM" stamp (click it to reload).
-
-Plugin id: `knutsi.weather-yr`. Requires Omarchy 4.0 or newer (the
-Quickshell-based shell with third-party plugin support).
+![Popup: current weather, hourly graph with rain, four days, tekstvarsel, settings](preview.png)
 
 ## Install
 
@@ -44,68 +18,94 @@ omarchy plugin add https://github.com/Knutsi/omarchy-yr-plugin.git --enable
 specific:
 
 ```bash
-omarchy bar put knutsi.weather-yr --after omarchy.clock
-omarchy bar move knutsi.weather-yr --section right --index 0
+omarchy bar put io.github.knutsi.yr --after omarchy.clock
+omarchy bar move io.github.knutsi.yr --section right --index 0
 ```
 
 It can live next to the stock `omarchy.weather` pill or replace it
-(`omarchy bar put omarchy.weather` brings the stock one back).
-
-Update later with `omarchy plugin update knutsi.weather-yr`.
+(`omarchy bar put omarchy.weather` brings the stock one back). Update with
+`omarchy plugin update io.github.knutsi.yr`. Requires Omarchy 4.0 or newer.
 
 ### Uninstall
 
 ```bash
-omarchy plugin remove knutsi.weather-yr
+omarchy plugin remove io.github.knutsi.yr
 ```
 
-That deletes `~/.config/omarchy/plugins/knutsi.weather-yr` and the bar entry.
-The plugin keeps no other state of its own: the shared location file
+That deletes `~/.config/omarchy/plugins/io.github.knutsi.yr` and the bar
+entry. The plugin keeps no other state of its own: the shared location file
 `~/.local/state/omarchy/settings/weather.json` belongs to Omarchy's stock
-weather widget (clear it with `omarchy-weather-location --clear`), and its
+weather widget (clear it with `omarchy-weather-location --clear`), and the
 settings live on the widget's entry in `~/.config/omarchy/shell.json`.
 
-### Dependencies
+## What you get
 
-Everything it needs ships with Omarchy: `curl`, `sh`, `timeout`, `grep`,
-`pgrep` and the Quickshell shell itself. No packages are installed, no
-privileges are requested, and nothing outside the user's own config/state
-files is written.
+A theme-tinted Nerd Font glyph and the temperature in the bar; the popup,
+top to bottom:
 
-Optional, user-installed: [`geoclue`](https://archlinux.org/packages/extra/x86_64/geoclue/)
-enables the GPS button (see below). The plugin only *detects* it; installing
-it is your decision and command.
+1. **Current weather** — glyph, temperature (click the unit to cycle °C → °F
+   → K), condition, location with search and satellite buttons, wind,
+   humidity, sunrise and sunset (computed locally, no extra requests).
+2. **Weather warnings** (*farevarsel*) — MET's active alerts for the spot,
+   coloured by level; click one for the description and advice. Shown in
+   English unless your locale is Norwegian.
+3. **Next N hours** — symbols, temperature curve, precipitation bars with
+   amounts, hour labels (24 h by default, 6–48 configurable).
+4. **Next 4 days** — symbol, day, high / low.
+5. **Tekstvarsel** — MET's written forecast for the Norwegian land region
+   (today and tomorrow; scrolls when long). Norway only, Norwegian only;
+   hides itself elsewhere. Toggle with the document button in the settings
+   row.
+6. **Settings** — `°C | °F | K`, `Location` (opens the search view in place
+   of the whole popup), the tekstvarsel toggle, the MET attribution and the
+   "updated HH:MM" stamp (click it to reload).
 
-Network services used at runtime (all HTTPS, no keys):
-[api.met.no](https://api.met.no/) (forecast, warnings, tekstvarsel),
-[geocoding-api.open-meteo.com](https://open-meteo.com/en/docs/geocoding-api),
-[api.kartverket.no](https://api.kartverket.no/stedsnavn/v1/),
-[photon.komoot.io](https://photon.komoot.io), and for IP-based auto-detect
-[ipwho.is](https://ipwho.is) / [get.geojs.io](https://www.geojs.io).
+![Search view: Open-Meteo and Kartverket matches, GPS button, back to automatic location](docs/search.png)
 
 ## Using it
 
 | Action | Result |
 |---|---|
-| Left click | Open / close the popup |
+| Left click the pill | Open / close the popup |
 | Middle click | Force a refresh (re-detects the location too) |
 | Right click | Desktop notification with the current conditions |
-| Click the location name, its 🔍 button, or the `Location` settings button | Opens the search view: type a place, pick with ↑/↓ + Enter or click; Esc / ✕ goes back; "Use automatic location" returns to IP auto-detect |
-| Click the  button (hero or search view) | Locate with GPS / Wi-Fi positioning through GeoClue — see below. Dimmed with an explanatory tooltip when the service is missing |
-| `°C` / `°F` / `K` buttons, or click the unit next to the big temperature | Switch units (persisted in shell.json) |
-| Click the "updated HH:MM" stamp | Fetch the forecast again (also re-detects the IP location) |
+| Click the location name, its magnifier, or the `Location` button | Search view: type a place, pick with ↑/↓ + Enter or click; Esc / ✕ goes back; "Use automatic location" returns to IP auto-detect |
+| Click the satellite button | Locate with GPS / Wi-Fi positioning through GeoClue — see [docs/geoclue.md](docs/geoclue.md). Dimmed with an explanatory tooltip when the service is missing |
+| Click the "updated HH:MM" stamp | Fetch again (at most once per 10 s) |
 | Tab / Shift-Tab in the popup | Move to the neighbouring bar panel |
 
-IPC, e.g. for keybindings:
+IPC, e.g. for keybindings (one handler serves every monitor):
 
 ```bash
-omarchy-shell shell toggle knutsi.weather-yr      # open/close the popup
-omarchy-shell knutsi.weather-yr refresh           # force refresh
-omarchy-shell knutsi.weather-yr edit              # open with the location search focused
-omarchy-shell knutsi.weather-yr toggleUnit        # °C → °F → K → °C
-omarchy-shell knutsi.weather-yr unit imperial     # set a unit directly
-omarchy-shell knutsi.weather-yr locate            # GPS fix via GeoClue (if available)
-omarchy-shell knutsi.weather-yr textForecast false  # hide/show the tekstvarsel
+omarchy-shell shell toggle io.github.knutsi.yr      # open/close the popup
+omarchy-shell io.github.knutsi.yr refresh           # force refresh
+omarchy-shell io.github.knutsi.yr edit              # open with the search view
+omarchy-shell io.github.knutsi.yr locate            # GPS fix via GeoClue (if available)
+omarchy-shell io.github.knutsi.yr toggleUnit        # °C → °F → K → °C
+omarchy-shell io.github.knutsi.yr unit imperial     # set a unit directly
+omarchy-shell io.github.knutsi.yr textForecast false  # hide/show the tekstvarsel
+omarchy-shell io.github.knutsi.yr location          # print the location in use
+```
+
+## Settings
+
+Settings are keys on the widget's entry in `~/.config/omarchy/shell.json`,
+set with `omarchy bar set`:
+
+| Key | Default | Meaning |
+|---|---|---|
+| `refreshMinutes` | `15` | Minutes between forecast fetches, 10–180. MET Norway asks desktop clients not to poll more often than every 10 minutes. |
+| `unit` | `metric` | `metric` (°C, m/s, mm), `imperial` (°F, mph, in) or `kelvin` (K, m/s, mm). Always metric unless you change it — the system locale is deliberately ignored. |
+| `barFormat` | `icon-temp` | `icon-temp` shows glyph + temperature; `icon` shows only the glyph (vertical bars always use the glyph). |
+| `graphHours` | `24` | Hours in the hour-by-hour graph, 6–48. |
+| `textForecast` | `true` | Show the tekstvarsel section (booleans need `--json`). |
+| `textForecastArea` | *(by location)* | Force a text-forecast region, e.g. `Fjellet i Sør-Norge` — the mountain region overlaps the lowland ones and the smallest match wins by default. |
+
+```bash
+omarchy bar set io.github.knutsi.yr refreshMinutes 30
+omarchy bar set io.github.knutsi.yr unit kelvin
+omarchy bar set io.github.knutsi.yr graphHours 48
+omarchy bar set io.github.knutsi.yr textForecast false --json
 ```
 
 ## Location
@@ -116,148 +116,114 @@ setting it once applies to both:
 ```bash
 omarchy-weather-location                          # show the current location
 omarchy-weather-location --set "Bergen" 60.3913,5.3221
+omarchy-weather-location --set "Bergen"           # name only: geocoded once, coordinates stored
 omarchy-weather-location --clear                  # back to auto-detect
 ```
 
-The state lives in `~/.local/state/omarchy/settings/weather.json` as
-`{"name": ..., "latitude": ..., "longitude": ...}` and is watched, so edits
-take effect immediately.
+The state lives in `~/.local/state/omarchy/settings/weather.json` and is
+watched, so edits take effect immediately.
 
 Without stored coordinates the position is detected from your public IP
 address (via [ipwho.is](https://ipwho.is), falling back to
-[geojs.io](https://www.geojs.io)). That is city-level at best and can be
-off by a lot on CG-NAT / satellite connections, so set the location
-explicitly if the forecast looks wrong. The lookup happens once per shell
-session (and on middle-click), not on every refresh.
+[geojs.io](https://www.geojs.io)) — city-level at best, and often off on
+CG-NAT or satellite connections. Set the location explicitly if the
+forecast looks wrong. The lookup happens once per shell session (and on
+middle-click), not on every refresh.
 
-### Place search
-
-The search asks three services at once and merges the answers:
+**Place search** asks three services at once and merges the answers:
 [Open-Meteo](https://open-meteo.com/en/docs/geocoding-api) (towns and
 cities worldwide), [Kartverket](https://www.kartverket.no/en/api-and-data/stedsnavndata)
 (Norway's official place-name register — this is what finds farms, hotels,
 ski areas and seters such as *Sanderstølen*), and
 [Photon](https://photon.komoot.io) (OpenStreetMap, worldwide, typo
-tolerant). Only a listed match can be saved; a bare name is never stored
-without coordinates.
+tolerant). Only a listed match can be saved.
 
-### GPS / Wi-Fi positioning (GeoClue)
-
-Linux has one standard location service: [GeoClue](https://gitlab.freedesktop.org/geoclue/geoclue).
-It combines Wi-Fi positioning (Arch's build points at the open
-[beaconDB](https://beacondb.net)), GNSS receivers via gpsd/NMEA, modem GPS
-and a static `/etc/geolocation`. Omarchy does not install it, so the 
-button is dimmed until you do:
-
-```bash
-sudo pacman -S geoclue
-```
-
-GeoClue also needs an *authorisation agent* on your session. GNOME ships
-one; on Hyprland start the demo agent from `~/.config/hypr/autostart.lua`:
-
-```lua
-o.launch_on_start("/usr/lib/geoclue-2.0/demos/agent")
-```
-
-then reload Hyprland (or run the agent once by hand). Alternatively skip
-the agent by allowing the client outright, as root, in
-`/etc/geoclue/conf.d/50-omarchy.conf`:
-
-```ini
-[geoclue-where-am-i]
-allowed=true
-system=false
-users=
-```
-
-How it behaves:
-
-- The plugin asks for a position **only when you press the button** — never
-  on startup or on a timer — and saves the result through
-  `omarchy-weather-location`, so the stock weather widget follows too.
-- The fix comes from `/usr/lib/geoclue-2.0/demos/where-am-i` (one process,
-  one D-Bus connection, 12 s timeout); the name comes from Photon's reverse
-  lookup, refined with Kartverket in Norway.
-- Where beaconDB has no Wi-Fi data, GeoClue falls back to an IP estimate;
-  such coarse fixes are labelled "(approx.)" with the radius shown.
-- The demo agent approves any app with a `.desktop` file and shows no
-  prompt — the button is the consent step. `submit-data=false` is the
-  default, so nothing is uploaded to beaconDB unless you opt in.
-- Wi-Fi positioning needs NetworkManager's `wpa_supplicant` backend; it
-  yields nothing under `iwd`.
-
-## Settings
-
-Settings are keys on the widget's entry in `~/.config/omarchy/shell.json`,
-set with `omarchy bar set`:
-
-| Key | Default | Meaning |
-|---|---|---|
-| `refreshMinutes` | `15` | Minutes between forecast fetches. Clamped to ≥ 10 — MET Norway asks desktop clients not to poll more often. |
-| `unit` | `metric` | `metric` (°C, m/s, mm), `imperial` (°F, mph, in) or `kelvin` (K, m/s, mm). Always metric unless you change it — the system locale is deliberately ignored. |
-| `barFormat` | `icon-temp` | `icon-temp` shows glyph + temperature; `icon` shows only the glyph. |
-| `graphHours` | `24` | Hours in the hour-by-hour graph (6–48; MET's hourly data runs ~60 h ahead). |
-| `textForecast` | `true` | Show the tekstvarsel section (set with `--json`: `omarchy bar set knutsi.weather-yr textForecast false --json`). |
-| `textForecastArea` | *(by location)* | Force a text-forecast region, e.g. `Fjellet i Sør-Norge` — the mountain region overlaps the lowland ones and the smallest match wins by default. |
-
-```bash
-omarchy bar set knutsi.weather-yr refreshMinutes 30
-omarchy bar set knutsi.weather-yr unit kelvin
-omarchy bar set knutsi.weather-yr barFormat icon
-omarchy bar set knutsi.weather-yr graphHours 48
-```
+**GPS / Wi-Fi positioning** uses GeoClue when it is installed; the satellite
+button explains what is missing otherwise. Setup, privacy notes and the
+accuracy caveats are in [docs/geoclue.md](docs/geoclue.md).
 
 ## How it talks to MET Norway
 
 - Forecast: `https://api.met.no/weatherapi/locationforecast/2.0/compact`
-- Warnings: `https://api.met.no/weatherapi/metalerts/2.0/current.json?lat=&lon=`
+- Warnings: `https://api.met.no/weatherapi/metalerts/2.0/current.json?lat=&lon=&lang=`
   (fetched with each forecast refresh)
 - Tekstvarsel: `https://api.met.no/weatherapi/textforecast/3.0/landoverview`
-  (every 3 h; the region is resolved locally by point-in-polygon — yr.no
-  itself no longer shows these texts, but MET still publishes them)
+  (every 3 h, only for positions in Norway; the region is resolved locally
+  by point-in-polygon — yr.no itself no longer shows these texts, but MET
+  still publishes them)
 - Coordinates are rounded to four decimals, the request identifies itself
   (`User-Agent: omarchy-yr-plugin/<version> github.com/Knutsi/omarchy-yr-plugin`),
   responses are gzip-compressed, and every refresh sends `If-Modified-Since`
   so an unchanged forecast costs a `304` with no body.
-- Refreshes are jittered by up to a minute so many installs never line up.
-- `403`/`429` responses are not retried until the next interval. Network
+- One shared service does the fetching no matter how many monitors show the
+  pill; refreshes are jittered by up to a minute so many installs never line
+  up; `403`/`429` responses are not retried until the next interval; network
   failures retry three times, 2.5 s apart, while the last good forecast
-  stays on screen.
-- The "current" hour is re-derived from the cached forecast every minute, so
-  the bar keeps up between fetches.
+  stays on screen (the pill shows a "not available" glyph with the error in
+  its tooltip when nothing could ever be fetched).
+
+## Dependencies and privacy
+
+Everything it needs ships with Omarchy: `curl`, `sh`, `timeout`, `grep`,
+`pgrep` and the Quickshell shell itself. No packages are installed, no
+privileges are requested, and the only files written are your own
+`shell.json` entry (via `omarchy bar set`, on a click) and the shared
+location file (via `omarchy-weather-location`, on a click).
+
+Optional, user-installed: [`geoclue`](https://archlinux.org/packages/extra/x86_64/geoclue/)
+enables the satellite button. The plugin only *detects* it; installing it is
+your decision and command.
+
+Network services used at runtime (all HTTPS, no keys):
+[api.met.no](https://api.met.no/) (forecast, warnings, tekstvarsel),
+[geocoding-api.open-meteo.com](https://open-meteo.com/en/docs/geocoding-api),
+[api.kartverket.no](https://api.kartverket.no/stedsnavn/v1/),
+[photon.komoot.io](https://photon.komoot.io), and for IP-based auto-detect
+[ipwho.is](https://ipwho.is) / [get.geojs.io](https://www.geojs.io).
 
 ## Theme
 
 Everything is drawn with the active Omarchy theme: the bar's foreground
 colour and font for the pill and popup, `accent` for hover/selection and the
 precipitation bars, `urgent` (the theme's red) for the temperature curve.
-Glyphs are from the Nerd Fonts weather set, the same family the stock weather
-pill uses, so the two look like siblings. Switching themes restyles the widget
-instantly.
+Warning banners use MET's own awareness colours (yellow/orange/red) on
+purpose. Glyphs come from the Nerd Fonts weather set, the same family the
+stock weather pill uses. Switching themes restyles the widget instantly.
 
 ## Development
 
-```
-manifest.json    plugin manifest
-BarWidget.qml    bar pill + popup loader
-Panel.qml        data fetching, location handling, popup UI
-HourlyGraph.qml  the hour-by-hour graph (Canvas)
-AlertBanner.qml  weather warnings
-TextForecastSection.qml  tekstvarsel box
-Model.js         pure helpers (parsing, symbol → glyph, hourly/daily rollups) — unit-tested
-test/            node --test suite with a recorded MET response
-```
-
 ```bash
-node --test                                   # unit tests (Node ≥ 20)
-omarchy plugin validate .                     # manifest/layout check
+node --test                                        # unit tests (Node ≥ 20)
+omarchy plugin validate .                          # manifest/layout check
+/usr/lib/qt6/bin/qmllint -I "$OMARCHY_PATH/shell" *.qml
 ```
 
-Cloning the repo straight into `~/.config/omarchy/plugins/knutsi.weather-yr`
+`qmllint` cannot resolve the shell's `qs.*` modules or the untyped `bar`
+object, so it reports "unqualified access" and "member not found" warnings
+for every plugin, first-party ones included; treat new warning *kinds* as
+the signal.
+
+Layout (flat, as Omarchy expects):
+
+```
+manifest.json            plugin manifest (kinds: service + bar-widget)
+Service.qml              the single shared instance: location, weather, search, settings, IPC
+  LocationService.qml    weather.json, IP detection, GeoClue, persistence
+  WeatherService.qml     forecast, warnings, tekstvarsel, derived views
+  GeocodeSearch.qml      three-source place search (GeocodeSource.qml)
+  CurlRequest.qml        one curl process, result from onExited
+  MetFetcher.qml         MET request with If-Modified-Since and a request key
+BarWidget.qml            per-monitor pill, binds to the service
+Panel.qml                per-monitor popup: HeroSection, AlertBanner, HourlyGraph,
+                         ForecastDaysRow, TextForecastSection, SettingsRow, SearchView
+Model.js                 pure helpers, unit-tested (test/*.test.mjs, fixtures documented)
+```
+
+Cloning the repo straight into `~/.config/omarchy/plugins/io.github.knutsi.yr`
 is the quickest dev loop. The shell notices saved files and re-registers the
-plugin, but a bar slot that is already mounted keeps its running instance
-(Omarchy 4.0.0) — run `omarchy restart shell` to see QML changes.
+plugin, but an already mounted bar slot keeps its running instance (Omarchy
+4.0) — run `omarchy restart shell` to see QML changes. See
+[CHANGELOG.md](CHANGELOG.md) for releases.
 
 ## Credits and licence
 
@@ -268,7 +234,7 @@ plugin, but a bar slot that is already mounted keeps its running instance
   (CC BY 4.0), [Kartverket](https://www.kartverket.no) place names (CC BY 4.0)
   and [Photon](https://photon.komoot.io) — © OpenStreetMap contributors (ODbL).
   IP lookup by [ipwho.is](https://ipwho.is) and [geojs.io](https://www.geojs.io).
-- Popup and location handling adapted from Omarchy's stock `omarchy.weather`
-  plugin (MIT).
+- Popup lifecycle and location handling adapted from Omarchy's stock weather
+  plugin (MIT, notice in [LICENSE](LICENSE)).
 
 This plugin is MIT licensed — see [LICENSE](LICENSE).
