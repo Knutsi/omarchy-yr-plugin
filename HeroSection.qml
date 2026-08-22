@@ -77,8 +77,8 @@ Item {
 
     Text {
       textFormat: Text.PlainText
-      visible: root.weather.conditionText !== ""
-      text: root.weather.conditionText
+      // A blank line, not nothing, while the condition is unknown.
+      text: root.weather.conditionText !== "" ? root.weather.conditionText : "\u00A0"
       color: root.foreground
       font.family: root.fontFamily
       font.pixelSize: Style.font.subtitle
@@ -158,7 +158,6 @@ Item {
 
     Row {
       id: stats
-      visible: !!root.weather.current
       spacing: Style.space(20)
 
       Repeater {

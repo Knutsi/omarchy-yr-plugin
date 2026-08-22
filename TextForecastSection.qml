@@ -9,6 +9,7 @@ Column {
   id: root
 
   property var report: null          // WeatherService.textReport
+  property bool loaded: false        // the text-forecast feed has been fetched (report may still be null)
   property color foreground: Color.foreground
   property string fontFamily: Style.font.family
   property real gutter: Style.space(16)
@@ -17,23 +18,36 @@ Column {
   readonly property color muted: Qt.darker(foreground, 1.5)
 
   spacing: Style.space(6)
-  visible: !!report
 
   PanelSectionHeader {
     textFormat: Text.PlainText
     anchors.left: parent.left
     anchors.leftMargin: root.gutter
-    text: "TEKSTVARSEL  ·  " + (root.report ? root.report.area.toUpperCase() : "")
+    text: "TEKSTVARSEL" + (root.report ? "  ·  " + root.report.area.toUpperCase() : "")
     foreground: root.foreground
     fontFamily: root.fontFamily
   }
 
+  // The body keeps one height whether the text is short, long, or not yet
+  // here, so the popup never resizes around it.
   Item {
     width: parent.width
-    height: Math.min(root.maxBodyHeight, body.implicitHeight)
+    height: root.maxBodyHeight
+
+    Text {
+      textFormat: Text.PlainText
+      visible: !root.report
+      anchors.centerIn: parent
+      text: root.loaded ? "No tekstvarsel for this spot" : "Fetching tekstvarsel…"
+      color: root.muted
+      font.family: root.fontFamily
+      font.pixelSize: Style.font.bodySmall
+      font.italic: true
+    }
 
     Flickable {
       id: scroller
+      visible: !!root.report
       anchors.fill: parent
       anchors.leftMargin: root.gutter
       anchors.rightMargin: root.gutter
