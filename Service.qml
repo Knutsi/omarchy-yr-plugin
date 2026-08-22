@@ -60,11 +60,41 @@ Item {
   function setTextForecast(enabled) { setSetting("textForecast", enabled ? "true" : "false", true) }
 
   // ---- Saved places (pinned favourites + the latest searches) live on the
-  //      same entry, as an undeclared `places` key, and round-trip the same
-  //      way: write through the CLI, read back from `settings`.
+  //      same entry, as an undeclared `places` key, and are read back from
+  //      `settings` like everything else. They cannot be written through
+  //      `omarchy bar set`: `qs ipc` spreads a JSON-array argument into
+  //      separate arguments, so a one-place list arrives as a bare object and
+  //      a longer one as "too many arguments". The list is written in-process
+  //      instead, through the shell's own entry writer, the way Omarchy's
+  //      widgets keep their own small state.
   readonly property var places: Model.parsePlaces(settings.places)
   readonly property bool canPin: Model.canPin(places)
-  function savePlaces(list) { setSetting("places", JSON.stringify(list), true) }
+
+  function currentEntry() {
+    var config = shell && shell.shellConfig ? shell.shellConfig : null
+    var layout = config && config.bar && config.bar.layout ? config.bar.layout : {}
+    var sections = ["left", "center", "right"]
+    for (var s = 0; s < sections.length; s++) {
+      var arr = layout[sections[s]] || []
+      for (var i = 0; i < arr.length; i++) if (arr[i] && String(arr[i].id || "").indexOf(pluginId) === 0) return arr[i]
+    }
+    return null
+  }
+
+  function savePlaces(list) {
+    if (!shell || typeof shell.updateEntryInline !== "function") {
+      settingsError = "Could not save places (shell API missing)"
+      return
+    }
+    // Start from the shell's live entry, not our last settings snapshot, so a
+    // setting written a moment ago is carried forward rather than clobbered.
+    var base = currentEntry() || settings
+    var entry = { id: pluginId }
+    for (var key in base) if (key !== "id") entry[key] = base[key]
+    entry.places = list
+    shell.updateEntryInline(pluginId, entry)
+    settingsError = ""
+  }
   function rememberPlace(place) { savePlaces(Model.rememberPlace(places, place)) }
   function togglePin(place) { savePlaces(Model.togglePin(places, place)) }
 

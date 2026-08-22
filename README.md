@@ -183,9 +183,9 @@ in [docs/geoclue.md](docs/geoclue.md).
 Everything it needs ships with Omarchy: `curl`, `sh`, `timeout`, `grep`,
 `pgrep`, `omarchy-launch-browser` and the Quickshell shell itself. No
 packages are installed, no privileges are requested, and the only files
-written are your own `shell.json` entry (via `omarchy bar set`, on a
-click) and the shared location file (via `omarchy-weather-location`, on a
-click). Every helper is started with an argument list, never through a
+written are your own `shell.json` entry (settings via `omarchy bar set`,
+the saved places through the shell's own config writer — both on a click)
+and the shared location file (via `omarchy-weather-location`, on a click). Every helper is started with an argument list, never through a
 shell, and each one the plugin waits for runs under `timeout`.
 
 What leaves the machine, and when:

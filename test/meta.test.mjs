@@ -78,7 +78,7 @@ test("every child process is an argv array from a Model.js builder, bounded in t
 
   const timed = [
     Model.settingCommand("io.github.knutsi.yr", "unit", "metric", false),
-    Model.settingCommand("io.github.knutsi.yr", "places", "[]", true),
+    Model.settingCommand("io.github.knutsi.yr", "textForecast", "true", true),   // scalars only: arrays cannot cross qs ipc
     Model.persistCommand("Oslo", 59.91273, 10.74609),
     Model.clearLocationCommand(),
     Model.GEOCLUE_PROBE_COMMAND

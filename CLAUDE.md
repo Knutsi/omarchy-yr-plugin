@@ -55,7 +55,13 @@ External input is hostile. Anything that enters the long-lived shell process
   `browserCommand` refuses anything that is not one; the launch is argv via
   `omarchy-launch-browser`. Never write the name of the init tool that
   launcher uses internally anywhere in the plugin (README included): the
-  marketplace baseline flags the word itself as a review capability.
+  marketplace baseline flags the word itself as a review capability;
+- **no arrays through `omarchy bar set`**: `qs ipc call` spreads a JSON-array
+  argument into separate arguments (a one-element list arrives as a bare
+  object, longer ones fail with "too many arguments") — found the hard way
+  with `places`. Scalars go through `settingCommand`; lists go in-process
+  through `shell.updateEntryInline(pluginId, entry)` (`Service.savePlaces`),
+  built from the shell's live entry.
 
 New network calls go through `curlCommand()`/`metCommand()` — never build a
 curl argv inline; `test/meta.test.mjs` counts the `["curl"` literals and
