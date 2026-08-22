@@ -10,7 +10,7 @@
 //   User-Agent, round coordinates to 4 decimals, poll at most every 10 min,
 //   revalidate with If-Modified-Since, credit "MET Norway".
 
-var VERSION = "0.1.0"
+var VERSION = "0.2.0"
 var USER_AGENT = "omarchy-yr-plugin/" + VERSION + " github.com/Knutsi/omarchy-yr-plugin"
 var FORECAST_ENDPOINT = "https://api.met.no/weatherapi/locationforecast/2.0/compact"
 var ATTRIBUTION = "Data from MET Norway"
@@ -74,6 +74,42 @@ function parseIpLocation(raw) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Place search: Open-Meteo (world, populated places) + Kartverket (Norway's
+// official place-name register, finds farms/hotels/ski areas like
+// "Sanderstølen") + Photon (OpenStreetMap, worldwide, typo-tolerant).
+// ---------------------------------------------------------------------------
+
+var KARTVERKET_API = "https://api.kartverket.no/stedsnavn/v1"
+var PHOTON_API = "https://photon.komoot.io"
+
+function curlCommand(url, maxTime) {
+  return ["curl", "-fsS", "--max-time", String(maxTime || 5), "-H", "User-Agent: " + USER_AGENT, url]
+}
+
+// Requests to fire for a query. Open-Meteo from two characters (its own
+// minimum); the fuzzier sources from three so a single keystroke never fans
+// out to three services.
+function geocodeRequests(query) {
+  var q = String(query || "").replace(/^\s+|\s+$/g, "")
+  var out = []
+  if (q.length < 2) return out
+  out.push({ source: "open-meteo", command: curlCommand(
+    "https://geocoding-api.open-meteo.com/v1/search?name=" + encodeURIComponent(q) + "&count=5&language=en&format=json") })
+  if (q.length >= 3) {
+    out.push({ source: "kartverket", command: curlCommand(
+      KARTVERKET_API + "/navn?sok=" + encodeURIComponent(q) + "&fuzzy=true&utkoordsys=4258&treffPerSide=10") })
+    out.push({ source: "photon", command: curlCommand(
+      PHOTON_API + "/api/?q=" + encodeURIComponent(q) + "&limit=5&lang=en") })
+  }
+  return out
+}
+
+function normalizeName(value) {
+  var text = String(value || "").replace(/^\s+|\s+$/g, "").toLowerCase()
+  return typeof text.normalize === "function" ? text.normalize("NFC") : text
+}
+
 // Open-Meteo geocoding response → suggestion rows for the location picker.
 function parseGeocodingResults(raw) {
   try {
@@ -90,7 +126,8 @@ function parseGeocodingResults(raw) {
         name: String(r.name),
         description: region,
         latitude: r.latitude,
-        longitude: r.longitude
+        longitude: r.longitude,
+        source: "open-meteo"
       })
     }
     return out
@@ -99,16 +136,377 @@ function parseGeocodingResults(raw) {
   }
 }
 
+// Kartverket's fuzzy search is very loose (thousands of hits), so keep only
+// names that start with what was typed, and skip street/address objects.
+var KARTVERKET_SKIP_TYPES = /^(Adressenavn|Veg|Gate|Vegkryss|Bru|Tunnel|Adressetilleggsnavn|Matrikkeladressenavn)$/
+
+function parseKartverketResults(raw, query) {
+  try {
+    var data = JSON.parse(String(raw || "{}"))
+    var rows = data.navn
+    if (!rows || !rows.length) return []
+    var prefix = normalizeName(query)
+    var out = []
+    for (var i = 0; i < rows.length; i++) {
+      var r = rows[i]
+      if (!r || !r["skrivemåte"] || !r.representasjonspunkt) continue
+      var name = String(r["skrivemåte"])
+      if (prefix && normalizeName(name).indexOf(prefix) !== 0) continue
+      var type = String(r.navneobjekttype || "")
+      if (KARTVERKET_SKIP_TYPES.test(type)) continue
+      var lat = num(r.representasjonspunkt.nord)
+      var lon = num(r.representasjonspunkt["øst"])
+      if (lat === null || lon === null) continue
+      var kommune = r.kommuner && r.kommuner[0] ? r.kommuner[0].kommunenavn : ""
+      var fylke = r.fylker && r.fylker[0] ? r.fylker[0].fylkesnavn : ""
+      var place = [kommune, fylke].filter(function(part) { return !!part }).join(", ")
+      out.push({
+        name: name,
+        description: [place, type].filter(function(part) { return !!part }).join("  ·  "),
+        latitude: lat,
+        longitude: lon,
+        source: "kartverket"
+      })
+    }
+    return out
+  } catch (e) {
+    return []
+  }
+}
+
+function photonDescription(props) {
+  var parts = []
+  if (props.city && props.city !== props.name) parts.push(props.city)
+  if (props.county && props.county !== props.city) parts.push(props.county)
+  else if (props.state && props.state !== props.city) parts.push(props.state)
+  if (props.country) parts.push(props.country)
+  var place = parts.join(", ")
+  var kind = props.osm_value ? String(props.osm_value).replace(/_/g, " ") : ""
+  return [place, kind].filter(function(part) { return !!part }).join("  ·  ")
+}
+
+// Street furniture is never a weather location.
+var PHOTON_SKIP_KEYS = /^(highway|emergency|railway|barrier)$/
+
+function parsePhotonResults(raw) {
+  try {
+    var data = JSON.parse(String(raw || "{}"))
+    var features = data.features
+    if (!features || !features.length) return []
+    var out = []
+    for (var i = 0; i < features.length; i++) {
+      var f = features[i]
+      var props = f && f.properties ? f.properties : null
+      var coords = f && f.geometry ? f.geometry.coordinates : null
+      if (!props || !props.name || !coords || coords.length < 2) continue
+      if (PHOTON_SKIP_KEYS.test(String(props.osm_key || "")) || String(props.osm_value || "") === "parking") continue
+      var lat = num(coords[1]), lon = num(coords[0])
+      if (lat === null || lon === null) continue
+      out.push({
+        name: String(props.name),
+        description: photonDescription(props),
+        latitude: lat,
+        longitude: lon,
+        source: "photon"
+      })
+    }
+    return out
+  } catch (e) {
+    return []
+  }
+}
+
+function parseGeocodeResponse(source, raw, query) {
+  if (source === "kartverket") return parseKartverketResults(raw, query)
+  if (source === "photon") return parsePhotonResults(raw)
+  return parseGeocodingResults(raw)
+}
+
+// Same name within ~2 km counts as the same place.
+function samePlace(a, b) {
+  return normalizeName(a.name) === normalizeName(b.name)
+    && Math.abs(a.latitude - b.latitude) < 0.02
+    && Math.abs(a.longitude - b.longitude) < 0.04
+}
+
+// Open-Meteo's settlements first, then Kartverket's official names, then
+// OpenStreetMap — deduplicated, at most `limit` rows.
+function mergeSuggestions(bySource, limit) {
+  var order = ["open-meteo", "kartverket", "photon"]
+  var max = limit || 8
+  var out = []
+  for (var s = 0; s < order.length; s++) {
+    var rows = (bySource && bySource[order[s]]) || []
+    for (var i = 0; i < rows.length && out.length < max; i++) {
+      var row = rows[i]
+      var duplicate = false
+      for (var j = 0; j < out.length; j++) {
+        if (samePlace(out[j], row)) { duplicate = true; break }
+      }
+      if (!duplicate) out.push(row)
+    }
+  }
+  return out
+}
+
+// The selected suggestion, or null when nothing matched — a bare name must
+// never be saved without coordinates (the forecast would silently come from
+// the IP-detected location instead).
 function locationCommit(text, suggestions, selectedIndex) {
   var name = String(text || "").replace(/^\s+|\s+$/g, "")
   if (name === "") return { name: "", latitude: null, longitude: null }
-
   var choices = suggestions || []
+  if (!choices.length) return null
   var index = Math.max(0, Math.min(parseInt(selectedIndex, 10) || 0, choices.length - 1))
-  var suggestion = choices[index]
-  if (suggestion) return suggestion
+  return choices[index] || null
+}
 
-  return { name: name, latitude: null, longitude: null }
+// ---- Reverse lookup (coordinates → a display name) for GPS fixes.
+
+function reverseCommand(latitude, longitude) {
+  return curlCommand(PHOTON_API + "/reverse?lat=" + roundCoord(latitude) + "&lon=" + roundCoord(longitude) + "&limit=1")
+}
+
+function parsePhotonReverse(raw) {
+  try {
+    var data = JSON.parse(String(raw || "{}"))
+    var f = data.features && data.features[0]
+    var props = f && f.properties
+    if (!props) return null
+    var name = props.name || props.city || props.county || props.state || props.country || ""
+    if (!name) return null
+    return { name: String(name), description: photonDescription(props), countryCode: String(props.countrycode || "").toUpperCase() }
+  } catch (e) {
+    return null
+  }
+}
+
+function kartverketPointCommand(latitude, longitude) {
+  return curlCommand(KARTVERKET_API + "/punkt?nord=" + roundCoord(latitude) + "&ost=" + roundCoord(longitude) + "&koordsys=4258&radius=500&treffPerSide=5")
+}
+
+// Nearest named place (not a street) within the radius, or "".
+function parseKartverketPoint(raw) {
+  try {
+    var data = JSON.parse(String(raw || "{}"))
+    var rows = data.navn
+    if (!rows || !rows.length) return ""
+    var best = null
+    for (var i = 0; i < rows.length; i++) {
+      var r = rows[i]
+      if (!r || KARTVERKET_SKIP_TYPES.test(String(r.navneobjekttype || ""))) continue
+      var name = r.stedsnavn && r.stedsnavn[0] ? r.stedsnavn[0]["skrivemåte"] : ""
+      if (!name) continue
+      var dist = num(r.meterFraPunkt)
+      if (best === null || (dist !== null && dist < best.dist)) best = { name: String(name), dist: dist === null ? Infinity : dist }
+    }
+    return best ? best.name : ""
+  } catch (e) {
+    return ""
+  }
+}
+
+// ---------------------------------------------------------------------------
+// GPS via GeoClue (the Linux location service)
+// ---------------------------------------------------------------------------
+
+// Three states: "missing" (geoclue not installed), "no-agent" (installed but
+// nothing authorises clients: no agent process and no allow-list entry) and
+// "ok". Only the filesystem and process table are consulted — a D-Bus call
+// would start the daemon as a side effect.
+var GEOCLUE_PROBE_COMMAND = ["sh", "-c",
+  "test -x /usr/lib/geoclue-2.0/demos/where-am-i || { echo missing; exit 0; }; "
+  + "if grep -rqs -e '^\\[geoclue-where-am-i\\]' /etc/geoclue/geoclue.conf /etc/geoclue/conf.d/ 2>/dev/null "
+  + "|| pgrep -f /usr/lib/geoclue-2.0/demos/agent >/dev/null 2>&1; then echo ok; else echo no-agent; fi"]
+
+// One fix, one process, one D-Bus connection (separate gdbus calls cannot
+// share a GeoClue client). stderr is folded in so a denial can be recognised.
+function whereAmICommand() {
+  return ["sh", "-c", "timeout 14 /usr/lib/geoclue-2.0/demos/where-am-i -t 12 -a 8 2>&1"]
+}
+
+// where-am-i prints a block per update; the last one wins.
+function parseWhereAmI(output) {
+  var text = String(output || "")
+  var denied = /AccessDenied|disallowed|not authorized|Agent rejected/i.test(text)
+  var lat = null, lon = null, acc = null, description = ""
+  var lines = text.split(/\r?\n/)
+  for (var i = 0; i < lines.length; i++) {
+    var m = /^(Latitude|Longitude|Accuracy|Description):\s*(.*)$/.exec(lines[i])
+    if (!m) continue
+    if (m[1] === "Latitude") lat = num(m[2])
+    else if (m[1] === "Longitude") lon = num(m[2])
+    else if (m[1] === "Accuracy") acc = num(m[2].replace(/[^0-9.\-]/g, ""))
+    else description = m[2].replace(/^\s+|\s+$/g, "")
+  }
+  if (lat === null || lon === null) return { latitude: null, longitude: null, accuracy: null, description: "", denied: denied }
+  return { latitude: lat, longitude: lon, accuracy: acc, description: description, denied: false }
+}
+
+// Wi-Fi positioning gives tens of metres; when the database has nothing for
+// the area it degrades to an IP estimate (kilometres) — worth telling apart.
+function fixQuality(accuracyMeters) {
+  var acc = num(accuracyMeters)
+  if (acc === null) return "unknown"
+  if (acc < 200) return "precise"
+  if (acc < 2000) return "approx"
+  return "coarse"
+}
+
+function gpsStateText(state) {
+  if (state === "ok") return "Use my position (GeoClue)"
+  if (state === "no-agent") return "Location service installed but not authorised.\nAdd  o.launch_on_start(\"/usr/lib/geoclue-2.0/demos/agent\")  to ~/.config/hypr/autostart.lua and reload Hyprland."
+  if (state === "missing") return "GPS not available — the system location service is not installed.\nInstall it with:  sudo pacman -S geoclue"
+  return "Checking location service…"
+}
+
+// ---------------------------------------------------------------------------
+// Tekstvarsel — MET Textforecast 3.0 (Norwegian land regions)
+// ---------------------------------------------------------------------------
+
+var TEXTFORECAST_URL = "https://api.met.no/weatherapi/textforecast/3.0/landoverview"
+
+function textForecastCommand(lastModified) {
+  var cmd = ["curl", "-sS", "--compressed", "--max-time", "15", "-D", "-", "-H", "User-Agent: " + USER_AGENT]
+  if (lastModified) cmd.push("-H", "If-Modified-Since: " + lastModified)
+  cmd.push(TEXTFORECAST_URL)
+  return cmd
+}
+
+function parseTextForecast(body) {
+  try {
+    var data = JSON.parse(String(body || ""))
+    if (!data || !data.features || !data.features.length) return null
+    var out = []
+    for (var i = 0; i < data.features.length; i++) {
+      var f = data.features[i]
+      var props = f.properties || {}
+      var interval = f.when && f.when.interval ? f.when.interval : []
+      var ring = f.geometry && f.geometry.type === "Polygon" && f.geometry.coordinates ? f.geometry.coordinates[0] : null
+      if (!ring || !props.text) continue
+      out.push({
+        area: String(props.area || props.name || ""),
+        text: String(props.text),
+        title: String(props.title || ""),
+        start: Date.parse(interval[0]),
+        end: Date.parse(interval[1]),
+        ring: ring
+      })
+    }
+    return out.length ? out : null
+  } catch (e) {
+    return null
+  }
+}
+
+// Ray casting on the outer ring; GeoJSON rings are [lon, lat].
+function pointInRing(lon, lat, ring) {
+  var inside = false
+  for (var i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    var xi = ring[i][0], yi = ring[i][1], xj = ring[j][0], yj = ring[j][1]
+    var crosses = ((yi > lat) !== (yj > lat)) && (lon < (xj - xi) * (lat - yi) / (yj - yi) + xi)
+    if (crosses) inside = !inside
+  }
+  return inside
+}
+
+function ringArea(ring) {
+  var sum = 0
+  for (var i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    sum += (ring[j][0] + ring[i][0]) * (ring[j][1] - ring[i][1])
+  }
+  return Math.abs(sum / 2)
+}
+
+// The region for a point: the smallest containing polygon (the mountain
+// region "Fjellet i Sør-Norge" overlaps the lowland ones), or `areaOverride`
+// when set. Returns today's and tomorrow's text, or null outside Norway.
+function textForecastFor(features, latitude, longitude, nowMs, areaOverride) {
+  if (!features || !features.length) return null
+  var lat = num(latitude), lon = num(longitude)
+  var area = String(areaOverride || "").replace(/^\s+|\s+$/g, "")
+  if (!area) {
+    if (lat === null || lon === null) return null
+    var bestArea = 0
+    for (var i = 0; i < features.length; i++) {
+      var f = features[i]
+      if (!pointInRing(lon, lat, f.ring)) continue
+      var size = ringArea(f.ring)
+      if (!area || size < bestArea) { area = f.area; bestArea = size }
+    }
+    if (!area) return null
+  }
+
+  var now = (nowMs === undefined || nowMs === null) ? Date.now() : nowMs
+  var periods = []
+  for (var k = 0; k < features.length; k++) {
+    if (features[k].area === area && !isNaN(features[k].start)) periods.push(features[k])
+  }
+  periods.sort(function(a, b) { return a.start - b.start })
+  var today = null, tomorrow = null
+  for (var p = 0; p < periods.length; p++) {
+    if (periods[p].end <= now) continue
+    if (!today) today = periods[p]
+    else if (!tomorrow) tomorrow = periods[p]
+  }
+  if (!today) return null
+  return { area: area, today: today, tomorrow: tomorrow }
+}
+
+// ---------------------------------------------------------------------------
+// Farevarsel — MET MetAlerts 2.0 (weather warnings for a point)
+// ---------------------------------------------------------------------------
+
+var METALERTS_URL = "https://api.met.no/weatherapi/metalerts/2.0/current.json"
+
+function alertsCommand(latitude, longitude, lastModified) {
+  var cmd = ["curl", "-sS", "--compressed", "--max-time", "15", "-D", "-", "-H", "User-Agent: " + USER_AGENT]
+  if (lastModified) cmd.push("-H", "If-Modified-Since: " + lastModified)
+  cmd.push(METALERTS_URL + "?lat=" + roundCoord(latitude) + "&lon=" + roundCoord(longitude))
+  return cmd
+}
+
+var ALERT_RANK = { red: 3, orange: 2, yellow: 1, green: 0 }
+var ALERT_COLORS = { red: "#d0473a", orange: "#e07b39", yellow: "#d4a72c", green: "#5c9e5c" }
+var ALERT_LEVEL_LABELS = { red: "rødt nivå", orange: "oransje nivå", yellow: "gult nivå", green: "grønt nivå" }
+
+function parseAlerts(body) {
+  try {
+    var data = JSON.parse(String(body || ""))
+    if (!data || !data.features) return []
+    var out = []
+    for (var i = 0; i < data.features.length; i++) {
+      var props = data.features[i].properties || {}
+      var interval = data.features[i].when && data.features[i].when.interval ? data.features[i].when.interval : []
+      var level = String(props.riskMatrixColor || "").toLowerCase()
+      if (!ALERT_RANK.hasOwnProperty(level)) {
+        var m = /;\s*(red|orange|yellow|green)\s*;/i.exec(String(props.awareness_level || ""))
+        level = m ? m[1].toLowerCase() : "yellow"
+      }
+      out.push({
+        id: String(props.id || ""),
+        event: String(props.event || ""),
+        name: String(props.eventAwarenessName || props.event || "Varsel"),
+        level: level,
+        levelLabel: ALERT_LEVEL_LABELS[level] || level,
+        severity: String(props.severity || ""),
+        area: String(props.area || ""),
+        description: String(props.description || ""),
+        instruction: String(props.instruction || ""),
+        consequences: String(props.consequences || ""),
+        start: Date.parse(interval[0]),
+        end: Date.parse(interval[1])
+      })
+    }
+    out.sort(function(a, b) { return ALERT_RANK[b.level] - ALERT_RANK[a.level] })
+    return out
+  } catch (e) {
+    return []
+  }
+}
+
+function alertColor(level) {
+  return ALERT_COLORS[String(level || "").toLowerCase()] || ALERT_COLORS.yellow
 }
 
 // ---------------------------------------------------------------------------
@@ -630,7 +1028,30 @@ if (typeof module !== "undefined") {
     hasCoordinates: hasCoordinates,
     parseIpLocation: parseIpLocation,
     parseGeocodingResults: parseGeocodingResults,
+    geocodeRequests: geocodeRequests,
+    normalizeName: normalizeName,
+    parseKartverketResults: parseKartverketResults,
+    parsePhotonResults: parsePhotonResults,
+    parseGeocodeResponse: parseGeocodeResponse,
+    mergeSuggestions: mergeSuggestions,
     locationCommit: locationCommit,
+    reverseCommand: reverseCommand,
+    parsePhotonReverse: parsePhotonReverse,
+    kartverketPointCommand: kartverketPointCommand,
+    parseKartverketPoint: parseKartverketPoint,
+    GEOCLUE_PROBE_COMMAND: GEOCLUE_PROBE_COMMAND,
+    whereAmICommand: whereAmICommand,
+    parseWhereAmI: parseWhereAmI,
+    fixQuality: fixQuality,
+    gpsStateText: gpsStateText,
+    textForecastCommand: textForecastCommand,
+    parseTextForecast: parseTextForecast,
+    pointInRing: pointInRing,
+    ringArea: ringArea,
+    textForecastFor: textForecastFor,
+    alertsCommand: alertsCommand,
+    parseAlerts: parseAlerts,
+    alertColor: alertColor,
     roundCoord: roundCoord,
     forecastUrl: forecastUrl,
     forecastCommand: forecastCommand,

@@ -2,10 +2,10 @@
   "schemaVersion": 1,
   "id": "knutsi.weather-yr",
   "name": "Yr weather",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "author": "Knut Åbjørsbråten",
   "license": "MIT",
-  "description": "yr.no / MET Norway weather pill with detail popup",
+  "description": "yr.no / MET Norway weather pill with detail popup, GPS location and tekstvarsel",
   "kinds": [
     "bar-widget"
   ],
@@ -14,7 +14,7 @@
   },
   "barWidget": {
     "displayName": "Yr weather",
-    "description": "Current conditions, hourly graph and 4-day forecast from api.met.no",
+    "description": "Current conditions, warnings, hourly graph, 4-day forecast and Norwegian text forecast from api.met.no",
     "category": "Info",
     "allowMultiple": false,
     "defaultSection": "center",
@@ -22,7 +22,9 @@
       "refreshMinutes": 15,
       "unit": "metric",
       "barFormat": "icon-temp",
-      "graphHours": 24
+      "graphHours": 24,
+      "textForecast": true,
+      "textForecastArea": ""
     },
     "schema": [
       {
@@ -56,6 +58,20 @@
         "min": 6,
         "max": 48,
         "defaultValue": 24
+      },
+      {
+        "key": "textForecast",
+        "type": "boolean",
+        "label": "Tekstvarsel",
+        "description": "Show MET's written forecast for the Norwegian land region (hidden elsewhere)",
+        "defaultValue": true
+      },
+      {
+        "key": "textForecastArea",
+        "type": "string",
+        "label": "Tekstvarsel region",
+        "description": "Force a region, e.g. Fjellet i Sør-Norge (empty = by location)",
+        "defaultValue": ""
       }
     ]
   }

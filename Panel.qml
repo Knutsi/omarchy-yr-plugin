@@ -7,9 +7,10 @@ import "Model.js" as Model
 
 // Detail popup + data layer for knutsi.weather-yr.
 //
-// Layout, top to bottom: current weather · hour-by-hour graph · next four
-// days · settings (units, location) · attribution. Changing the location
-// swaps the whole content for a search view.
+// Layout, top to bottom: current weather · weather warnings · hour-by-hour
+// graph · next four days · tekstvarsel (Norway) · settings · attribution.
+// Changing the location swaps the whole content for a search view, which
+// also hosts the GPS (GeoClue) button.
 //
 // Data: MET Norway Locationforecast 2.0 (yr.no's API). One fetch per
 // refresh interval (never more often than every 10 minutes, per MET's terms),
@@ -99,7 +100,10 @@ Panel {
     lastModified = ""
     forecastRetries = 0
     forecastProc.running = false
-    if (locationKey !== "") Qt.callLater(fetchForecast)
+    if (locationKey !== "") {
+      Qt.callLater(fetchForecast)
+      Qt.callLater(fetchAlerts)
+    }
   }
 
   property FileView locationFile: FileView {
@@ -127,6 +131,7 @@ Panel {
   // The first refresh waits for the location file so a stored position
   // never triggers a needless IP lookup.
   onLocationFileSettledChanged: if (locationFileSettled) Qt.callLater(function() { root.refresh(false) })
+  Component.onCompleted: probeGps()
 
   // ---- Click-to-edit state for the location.
   property bool editingLocation: false
@@ -135,7 +140,109 @@ Panel {
   property var locationSuggestions: []
   property int suggestionIndex: 0
   property string geocodePendingQuery: ""
-  property string geocodeActiveQuery: ""
+  property string geocodeQuery: ""
+  property var geocodeResults: ({})
+  property string commitHint: ""
+  readonly property bool geocodeRunning: openMeteoProc.running || kartverketProc.running || photonProc.running
+
+  // ---- GPS via GeoClue. Only ever queried when the user presses the button.
+  property string gpsState: "unknown"   // unknown | missing | no-agent | ok
+  property bool gpsBusy: false
+  property string gpsMessage: ""
+  property var pendingFix: null
+  property string pendingFixName: ""
+  readonly property string gpsTooltip: gpsBusy ? "Locating…" : Model.gpsStateText(gpsState)
+
+  function probeGps() {
+    if (!gpsProbeProc.running) gpsProbeProc.running = true
+  }
+
+  function locateWithGps() {
+    if (gpsState !== "ok" || gpsBusy) return
+    gpsBusy = true
+    gpsMessage = "Locating…"
+    whereAmIProc.running = true
+  }
+
+  function finishGpsFix() {
+    var fix = pendingFix
+    if (!fix) { gpsBusy = false; return }
+    var quality = Model.fixQuality(fix.accuracy)
+    var name = pendingFixName || (Model.roundCoord(fix.latitude) + ", " + Model.roundCoord(fix.longitude))
+    if (quality === "coarse") name += " (approx.)"
+    gpsMessage = quality === "coarse"
+      ? "Approximate position (±" + Math.round(fix.accuracy / 1000) + " km) — no Wi-Fi data for this area"
+      : "Position found (±" + Math.round(fix.accuracy) + " m)"
+    gpsBusy = false
+    pendingFix = null
+    savingLocation = true
+    savingLocationQueryStarted = false
+    configuredLocationState = { name: name, latitude: fix.latitude, longitude: fix.longitude }
+    persistLocation(name, fix.latitude, fix.longitude)
+  }
+
+  Process {
+    id: gpsProbeProc
+    command: Model.GEOCLUE_PROBE_COMMAND
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        var state = String(text || "").trim()
+        root.gpsState = (state === "ok" || state === "no-agent" || state === "missing") ? state : "missing"
+      }
+    }
+  }
+
+  Process {
+    id: whereAmIProc
+    command: Model.whereAmICommand()
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        var fix = Model.parseWhereAmI(text)
+        if (fix.latitude === null) {
+          root.gpsBusy = false
+          root.gpsMessage = fix.denied
+            ? "Denied by GeoClue — is the authorisation agent running?"
+            : "No position found — Wi-Fi positioning has no data for this area"
+          return
+        }
+        root.pendingFix = fix
+        root.pendingFixName = ""
+        reverseProc.command = Model.reverseCommand(fix.latitude, fix.longitude)
+        reverseProc.running = true
+      }
+    }
+  }
+
+  Process {
+    id: reverseProc
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        var rev = Model.parsePhotonReverse(text)
+        if (rev) root.pendingFixName = rev.name
+        if (rev && rev.countryCode === "NO" && root.pendingFix) {
+          kartverketPointProc.command = Model.kartverketPointCommand(root.pendingFix.latitude, root.pendingFix.longitude)
+          kartverketPointProc.running = true
+        } else {
+          root.finishGpsFix()
+        }
+      }
+    }
+  }
+
+  Process {
+    id: kartverketPointProc
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        var name = Model.parseKartverketPoint(text)
+        if (name) root.pendingFixName = name
+        root.finishGpsFix()
+      }
+    }
+  }
 
   // ---- Units: the `unit` setting (metric | imperial | kelvin), metric by default.
   readonly property string unit: Model.unitSystem(setting("unit", "metric"))
@@ -158,6 +265,77 @@ Panel {
 
   Process {
     id: unitSaveProc
+  }
+
+  // ---- Tekstvarsel (MET Textforecast 3.0, Norway) — on unless turned off.
+  readonly property bool textForecastEnabled: String(setting("textForecast", true)) !== "false"
+  property var textFeatures: null
+  property string textLastModified: ""
+  readonly property var textReport: Model.textForecastFor(textFeatures, effectiveLocation.latitude, effectiveLocation.longitude, tick.getTime(), setting("textForecastArea", ""))
+
+  function setTextForecast(enabled) {
+    textSaveProc.command = ["omarchy", "bar", "set", "knutsi.weather-yr", "textForecast", enabled ? "true" : "false", "--json"]
+    textSaveProc.running = true
+  }
+
+  function fetchTextForecast() {
+    if (textForecastProc.running) return
+    textForecastProc.command = Model.textForecastCommand(textLastModified)
+    textForecastProc.running = true
+  }
+
+  Process {
+    id: textSaveProc
+  }
+
+  Process {
+    id: textForecastProc
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        var response = Model.parseCurlResponse(text)
+        if (response.status !== 200) return
+        var parsed = Model.parseTextForecast(response.body)
+        if (!parsed) return
+        root.textFeatures = parsed
+        root.textLastModified = response.lastModified
+      }
+    }
+  }
+
+  // Text forecasts are issued a few times a day; three hours is plenty.
+  Timer {
+    interval: 3 * 3600 * 1000 + root.refreshJitterMs
+    running: root.textForecastEnabled
+    repeat: true
+    triggeredOnStart: true
+    onTriggered: root.fetchTextForecast()
+  }
+
+  // ---- Farevarsel (MET MetAlerts 2.0) — fetched with every forecast refresh.
+  property var alerts: []
+  property string alertsLastModified: ""
+  property string alertsLocationKey: ""
+
+  function fetchAlerts() {
+    if (!hasLocation || alertsProc.running) return
+    if (alertsLocationKey !== locationKey) { alertsLastModified = ""; alertsLocationKey = locationKey }
+    alertsProc.command = Model.alertsCommand(effectiveLocation.latitude, effectiveLocation.longitude, alertsLastModified)
+    alertsProc.running = true
+  }
+
+  Process {
+    id: alertsProc
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        var response = Model.parseCurlResponse(text)
+        if (response.status === 304) return
+        if (response.status !== 200) return
+        root.alerts = Model.parseAlerts(response.body)
+        root.alertsLastModified = response.lastModified
+      }
+    }
   }
 
   // ---- Derived report. `tick` advances once a minute so the "current"
@@ -201,6 +379,7 @@ Panel {
     if (!hasConfiguredCoordinates && (force || !Model.hasCoordinates(detectedLocation))) detectLocation()
     if (force) lastModified = ""
     fetchForecast()
+    fetchAlerts()
   }
 
   function detectLocation() {
@@ -306,7 +485,12 @@ Panel {
     savingLocation = false
     savingLocationQueryStarted = false
     locationSuggestions = []
+    geocodeResults = ({})
+    geocodeQuery = ""
+    commitHint = ""
+    gpsMessage = ""
     suggestionIndex = 0
+    probeGps()
     Qt.callLater(function() {
       locationField.text = root.configuredLocation
       locationField.selectAll()
@@ -325,6 +509,10 @@ Panel {
 
   function commitLocation() {
     var location = Model.locationCommit(locationField.text, locationSuggestions, suggestionIndex)
+    if (location === null) {
+      commitHint = geocodeRunning ? "Still searching…" : "Pick a match from the list"
+      return
+    }
     if (location.name === "") {
       clearLocation()
       return
@@ -365,30 +553,80 @@ Panel {
 
   function requestGeocode() {
     var query = locationField.text.trim()
+    commitHint = ""
     if (query.length < 2) {
       locationSuggestions = []
+      geocodeResults = ({})
+      geocodeQuery = ""
       return
     }
     geocodePendingQuery = query
-    if (!geocodeProc.running) startGeocode()
+    startGeocode()
   }
 
+  // Each source runs in its own process; a source that is still busy with an
+  // older query is re-run as soon as it finishes (see handleGeocode).
   function startGeocode() {
-    geocodeActiveQuery = geocodePendingQuery
-    geocodeProc.command = ["curl", "-fsS", "--max-time", "5",
-      "https://geocoding-api.open-meteo.com/v1/search?name=" + encodeURIComponent(geocodeActiveQuery) + "&count=5&language=en&format=json"]
-    geocodeProc.running = true
+    var requests = Model.geocodeRequests(geocodePendingQuery)
+    for (var i = 0; i < requests.length; i++) {
+      var proc = geocodeProcFor(requests[i].source)
+      if (proc.running || proc.query === geocodePendingQuery) continue
+      proc.query = geocodePendingQuery
+      proc.command = requests[i].command
+      proc.running = true
+    }
+  }
+
+  function geocodeProcFor(source) {
+    if (source === "kartverket") return kartverketProc
+    if (source === "photon") return photonProc
+    return openMeteoProc
+  }
+
+  function handleGeocode(source, query, raw) {
+    if (!editingLocation) return
+    if (query !== geocodePendingQuery) {
+      geocodeProcFor(source).query = ""
+      Qt.callLater(startGeocode)
+      return
+    }
+    if (query !== geocodeQuery) {
+      geocodeResults = ({})
+      geocodeQuery = query
+      suggestionIndex = 0
+    }
+    var next = ({})
+    for (var k in geocodeResults) next[k] = geocodeResults[k]
+    next[source] = Model.parseGeocodeResponse(source, raw, query)
+    geocodeResults = next
+    locationSuggestions = Model.mergeSuggestions(geocodeResults, 8)
+    if (suggestionIndex > locationSuggestions.length - 1) suggestionIndex = Math.max(0, locationSuggestions.length - 1)
   }
 
   Process {
-    id: geocodeProc
+    id: openMeteoProc
+    property string query: ""
     stdout: StdioCollector {
       waitForEnd: true
-      onStreamFinished: {
-        root.locationSuggestions = root.editingLocation ? Model.parseGeocodingResults(text) : []
-        root.suggestionIndex = 0
-        if (root.geocodePendingQuery !== root.geocodeActiveQuery) Qt.callLater(root.startGeocode)
-      }
+      onStreamFinished: root.handleGeocode("open-meteo", openMeteoProc.query, text)
+    }
+  }
+
+  Process {
+    id: kartverketProc
+    property string query: ""
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: root.handleGeocode("kartverket", kartverketProc.query, text)
+    }
+  }
+
+  Process {
+    id: photonProc
+    property string query: ""
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: root.handleGeocode("photon", photonProc.query, text)
     }
   }
 
@@ -433,6 +671,8 @@ Panel {
     function edit(): void { root.openFromHotkey(); root.startEditingLocation() }
     function unit(name: string): void { root.setUnit(name) }
     function toggleUnit(): void { root.toggleUnit() }
+    function locate(): void { root.probeGps(); Qt.callLater(function() { root.locateWithGps() }) }
+    function textForecast(enabled: string): void { root.setTextForecast(String(enabled) !== "false") }
   }
 
   readonly property color mutedText: Qt.darker(root.bar ? root.bar.foreground : Color.foreground, 1.5)
@@ -446,7 +686,7 @@ Panel {
     open: root.opened
     centerOnBar: true
     focusTarget: keyCatcher
-    contentWidth: panel.fittedContentWidth(Style.space(520))
+    contentWidth: panel.fittedContentWidth(Style.space(540))
     contentHeight: panel.fittedContentHeight(weatherColumn.implicitHeight)
 
     PanelKeyCatcher {
@@ -560,7 +800,7 @@ Panel {
                 spacing: Style.space(6)
 
                 Text {
-                  text: ""  // nf-fa-map_marker
+                  text: "󰍎"  // nf-md-map_marker
                   color: root.mutedText
                   font.family: root.bar.fontFamily
                   font.pixelSize: Style.font.body
@@ -584,12 +824,24 @@ Panel {
                 }
                 PanelActionButton {
                   anchors.verticalCenter: parent.verticalCenter
-                  iconText: ""  // nf-fa-search
+                  iconText: "󰍉"  // nf-md-magnify
                   tooltipText: "Change location"
                   foreground: root.bar.foreground
                   fontFamily: root.bar.fontFamily
                   fontSize: Style.font.bodySmall
                   onClicked: root.startEditingLocation()
+                }
+                // GPS: enabled only when GeoClue is installed and authorised;
+                // otherwise dimmed, with the tooltip saying what is missing.
+                PanelActionButton {
+                  anchors.verticalCenter: parent.verticalCenter
+                  iconText: root.gpsBusy ? "󰦖" : "󰑱"  // nf-md-satellite_variant
+                  tooltipText: root.gpsTooltip
+                  foreground: root.gpsState === "ok" ? root.bar.foreground : Qt.darker(root.bar.foreground, 1.4)
+                  fontFamily: root.bar.fontFamily
+                  fontSize: Style.font.bodySmall
+                  opacity: root.gpsState === "ok" ? 1 : 0.45
+                  onClicked: root.locateWithGps()
                 }
               }
 
@@ -625,6 +877,26 @@ Panel {
                   }
                 }
               }
+            }
+          }
+
+          // ================================================================
+          // 1b. Weather warnings (farevarsel)
+          // ================================================================
+          Item {
+            visible: root.alerts.length > 0
+            width: parent.width
+            height: alertBanner.implicitHeight
+
+            AlertBanner {
+              id: alertBanner
+              anchors.left: parent.left
+              anchors.right: parent.right
+              anchors.leftMargin: Style.space(16)
+              anchors.rightMargin: Style.space(16)
+              alerts: root.alerts
+              foreground: root.bar.foreground
+              fontFamily: root.bar.fontFamily
             }
           }
 
@@ -762,6 +1034,25 @@ Panel {
           }
 
           // ================================================================
+          // 3b. Tekstvarsel
+          // ================================================================
+          Rectangle {
+            visible: root.textForecastEnabled && !!root.textReport
+            width: parent.width
+            height: Style.spacing.hairline
+            color: root.bar.foreground
+            opacity: 0.12
+          }
+
+          TextForecastSection {
+            visible: root.textForecastEnabled && !!root.textReport
+            width: parent.width
+            report: root.textReport
+            foreground: root.bar.foreground
+            fontFamily: root.bar.fontFamily
+          }
+
+          // ================================================================
           // 4. Settings (left) · attribution and update stamp (right)
           // ================================================================
           Rectangle {
@@ -794,7 +1085,7 @@ Panel {
 
               Button {
                 anchors.verticalCenter: parent.verticalCenter
-                iconText: ""
+                iconText: "󰍉"
                 text: "Location"
                 tooltipText: "Search for a city (Enter)"
                 foreground: root.bar.foreground
@@ -802,6 +1093,18 @@ Panel {
                 fontSize: Style.font.bodySmall
                 bordered: true
                 onClicked: root.startEditingLocation()
+              }
+
+              // Only offered where a text forecast exists (Norwegian regions).
+              PanelActionButton {
+                anchors.verticalCenter: parent.verticalCenter
+                visible: !!root.textReport
+                iconText: "󰈙"  // nf-md-file_document
+                tooltipText: root.textForecastEnabled ? "Tekstvarsel on — click to hide" : "Tekstvarsel off — click to show"
+                foreground: root.textForecastEnabled ? Color.accent : Qt.darker(root.bar.foreground, 1.5)
+                fontFamily: root.bar.fontFamily
+                fontSize: Style.font.body
+                onClicked: root.setTextForecast(!root.textForecastEnabled)
               }
             }
 
@@ -862,16 +1165,35 @@ Panel {
                 font.letterSpacing: 1
               }
 
-              PanelActionButton {
+              Row {
                 anchors.right: parent.right
                 anchors.rightMargin: Style.space(12)
                 anchors.verticalCenter: parent.verticalCenter
-                iconText: "✕"
-                tooltipText: "Back (Esc)"
-                foreground: root.bar.foreground
-                fontFamily: root.bar.fontFamily
-                fontSize: Style.font.bodySmall
-                onClicked: root.cancelEditingLocation()
+                spacing: Style.space(6)
+
+                Button {
+                  anchors.verticalCenter: parent.verticalCenter
+                  iconText: root.gpsBusy ? "󰦖" : "󰑱"
+                  text: "My position"
+                  tooltipText: root.gpsTooltip
+                  enabled: root.gpsState === "ok" && !root.gpsBusy
+                  opacity: root.gpsState === "ok" ? 1 : 0.45
+                  foreground: root.bar.foreground
+                  fontFamily: root.bar.fontFamily
+                  fontSize: Style.font.bodySmall
+                  bordered: true
+                  onClicked: root.locateWithGps()
+                }
+
+                PanelActionButton {
+                  anchors.verticalCenter: parent.verticalCenter
+                  iconText: "✕"
+                  tooltipText: "Back (Esc)"
+                  foreground: root.bar.foreground
+                  fontFamily: root.bar.fontFamily
+                  fontSize: Style.font.bodySmall
+                  onClicked: root.cancelEditingLocation()
+                }
               }
             }
 
@@ -930,10 +1252,11 @@ Panel {
               }
               Text {
                 text: root.savingLocation ? "Saving and fetching the forecast…"
+                  : (root.commitHint !== "" ? root.commitHint
                   : (locationField.text.trim().length < 2 ? "Type at least two letters"
-                  : (root.locationSuggestions.length === 0 ? (geocodeProc.running ? "Searching…" : "No matches")
-                  : "↑ ↓ to choose  ·  Enter to pick  ·  Esc to go back"))
-                color: root.fadedText
+                  : (root.locationSuggestions.length === 0 ? (root.geocodeRunning ? "Searching…" : "No matches")
+                  : "↑ ↓ to choose  ·  Enter to pick  ·  Esc to go back" + (root.geocodeRunning ? "  ·  searching…" : ""))))
+                color: root.commitHint !== "" ? root.bar.foreground : root.fadedText
                 font.family: root.bar.fontFamily
                 font.pixelSize: Style.font.caption
               }
@@ -963,17 +1286,27 @@ Panel {
                     spacing: Style.space(8)
 
                     Text {
+
+                      id: suggestionName
+
                       text: modelData.name
                       color: index === root.suggestionIndex ? Style.hoverStateColor(root.bar.foreground, Color.accent) : root.bar.foreground
                       font.family: root.bar.fontFamily
                       font.pixelSize: Style.font.body
                     }
+
                     Text {
+
                       visible: text !== ""
+
+                      width: Math.max(0, suggestionRow.parent.width - suggestionName.width - Style.space(44))
+
                       text: modelData.description
                       color: root.mutedText
                       font.family: root.bar.fontFamily
                       font.pixelSize: Style.font.bodySmall
+                      elide: Text.ElideRight
+
                       anchors.verticalCenter: parent.verticalCenter
                     }
                   }
@@ -1028,6 +1361,29 @@ Panel {
                 bordered: true
                 onClicked: root.clearLocation()
               }
+            }
+
+            // GPS status: what the service can (or cannot) do right now.
+            Text {
+              anchors.left: parent.left
+              anchors.leftMargin: Style.space(16)
+              width: parent.width - Style.space(32)
+              visible: text !== ""
+              text: root.gpsMessage !== "" ? root.gpsMessage
+                : (root.gpsState === "ok" ? "" : root.gpsTooltip)
+              color: root.gpsState === "ok" ? root.mutedText : root.fadedText
+              font.family: root.bar.fontFamily
+              font.pixelSize: Style.font.caption
+              wrapMode: Text.WordWrap
+            }
+
+            Text {
+              anchors.left: parent.left
+              anchors.leftMargin: Style.space(16)
+              text: "Place names © Kartverket (CC BY 4.0)  ·  © OpenStreetMap contributors"
+              color: root.fadedText
+              font.family: root.bar.fontFamily
+              font.pixelSize: Style.font.caption
             }
           }
         }
