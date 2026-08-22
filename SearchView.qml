@@ -222,7 +222,8 @@ Column {
     }
   }
 
-  // ---- Saved places while the box is empty: pinned first, then recent.
+  // ---- Saved places while the box is empty: pinned first (filled pin),
+  //      then the latest searches (outlined pin).
   Column {
     visible: !root.saving && root.showingPlaces
     width: parent.width
@@ -231,39 +232,22 @@ Column {
     Repeater {
       model: root.showingPlaces ? root.places : []
 
-      Column {
-        id: savedRow
+      PlaceRow {
         required property var modelData
         required property int index
         width: parent.width
-        spacing: 0
-
-        PanelSectionHeader {
-          textFormat: Text.PlainText
-          visible: savedRow.index === 0 || savedRow.modelData.pinned !== root.places[savedRow.index - 1].pinned
-          anchors.left: parent.left
-          anchors.leftMargin: root.gutter
-          bottomPadding: Style.space(4)
-          text: savedRow.modelData.pinned ? "PINNED" : "RECENT"
-          foreground: root.foreground
-          fontFamily: root.fontFamily
-        }
-
-        PlaceRow {
-          width: parent.width
-          name: savedRow.modelData.name
-          description: savedRow.modelData.description
-          selected: savedRow.index === root.selectedIndex
-          pinnable: true
-          pinned: savedRow.modelData.pinned
-          canPin: root.service.canPin
-          foreground: root.foreground
-          fontFamily: root.fontFamily
-          gutter: root.gutter
-          onHovered: root.selectedIndex = savedRow.index
-          onPicked: root.pick(savedRow.modelData)
-          onPinToggled: root.service.togglePin(savedRow.modelData)
-        }
+        name: modelData.name
+        description: modelData.description
+        selected: index === root.selectedIndex
+        pinnable: true
+        pinned: modelData.pinned
+        canPin: root.service.canPin
+        foreground: root.foreground
+        fontFamily: root.fontFamily
+        gutter: root.gutter
+        onHovered: root.selectedIndex = index
+        onPicked: root.pick(modelData)
+        onPinToggled: root.service.togglePin(modelData)
       }
     }
   }
