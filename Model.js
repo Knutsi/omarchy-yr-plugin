@@ -18,7 +18,7 @@
 // the User-Agent, round coordinates to 4 decimals, poll at most every
 // 10 minutes, revalidate with If-Modified-Since, credit "MET Norway".
 
-var VERSION = "0.3.1"
+var VERSION = "0.3.2"
 var USER_AGENT = "omarchy-yr-plugin/" + VERSION + " github.com/Knutsi/omarchy-yr-plugin"
 var ATTRIBUTION = "Data from MET Norway"
 
@@ -38,6 +38,21 @@ var TIMEOUT_TEXT_S = 15         // textforecast/metalerts bodies are larger
 var RETRY_LIMIT = 3
 var RETRY_DELAY_MS = 2500
 var TEXTFORECAST_INTERVAL_MS = 3 * 3600 * 1000
+
+// Response size ceilings (bytes). Real bodies are ~1–10 KB for the lookup
+// services and ~30–300 KB for MET, so both caps sit an order of magnitude
+// above anything legitimate. Enforced twice: curl aborts the transfer
+// (--max-filesize; curl ≥ 8.4 also stops chunked/compressed bodies it cannot
+// size up front — exit 63), and the parsers refuse anything larger that
+// still arrived, so an endpoint gone wrong cannot grow the shell's memory
+// without bound. The collector text is UTF-16, so `length` under-counts
+// multi-byte input slightly — fine for a ceiling this far above real bodies.
+var MAX_BYTES_LOOKUP = 262144      // 256 KiB — geocoders, IP lookup, reverse lookup
+var MAX_BYTES_MET = 2097152        // 2 MiB — forecast, alerts, text forecast
+
+function responseTooLarge(raw, maxBytes) {
+  return String(raw || "").length > maxBytes
+}
 
 function num(value) {
   if (value === undefined || value === null || value === "") return null
@@ -207,6 +222,7 @@ var IP_LOCATION_URLS = [
 // a `success` flag that is false on rate limiting or private addresses.
 function parseIpLocation(raw) {
   var unset = emptyLocation()
+  if (responseTooLarge(raw, MAX_BYTES_LOOKUP)) return unset
   try {
     var data = JSON.parse(String(raw || ""))
     if (!data || typeof data !== "object") return unset
@@ -235,7 +251,8 @@ function locationKey(latitude, longitude) {
 }
 
 function curlCommand(url, maxTimeSec) {
-  return ["curl", "-fsS", "--max-time", String(maxTimeSec || TIMEOUT_LOOKUP_S), "-H", "User-Agent: " + USER_AGENT, url]
+  return ["curl", "-fsS", "--max-time", String(maxTimeSec || TIMEOUT_LOOKUP_S),
+          "--max-filesize", String(MAX_BYTES_LOOKUP), "-H", "User-Agent: " + USER_AGENT, url]
 }
 
 // ---------------------------------------------------------------------------
@@ -359,6 +376,7 @@ function parsePhotonResults(raw) {
 }
 
 function parseGeocodeResponse(source, raw, query) {
+  if (responseTooLarge(raw, MAX_BYTES_LOOKUP)) return []
   if (source === "kartverket") return parseKartverketResults(raw, query)
   if (source === "photon") return parsePhotonResults(raw)
   return parseOpenMeteoResults(raw)
@@ -423,6 +441,7 @@ function reverseCommand(latitude, longitude) {
 }
 
 function parsePhotonReverse(raw) {
+  if (responseTooLarge(raw, MAX_BYTES_LOOKUP)) return null
   try {
     var data = JSON.parse(String(raw || "{}"))
     var f = data.features && data.features[0]
@@ -442,6 +461,7 @@ function kartverketPointCommand(latitude, longitude) {
 
 // Nearest named place (not a street) within the radius, or "".
 function parseKartverketPoint(raw) {
+  if (responseTooLarge(raw, MAX_BYTES_LOOKUP)) return ""
   try {
     var data = JSON.parse(String(raw || "{}"))
     var rows = data.navn
@@ -561,7 +581,8 @@ function alertsUrl(latitude, longitude, lang) {
 // of the body (-D -) so the caller can see the status code and the
 // Last-Modified value to send back as If-Modified-Since next time.
 function metCommand(url, lastModified, maxTimeSec) {
-  var cmd = ["curl", "-sS", "--compressed", "--max-time", String(maxTimeSec || TIMEOUT_FORECAST_S), "-D", "-",
+  var cmd = ["curl", "-sS", "--compressed", "--max-time", String(maxTimeSec || TIMEOUT_FORECAST_S),
+             "--max-filesize", String(MAX_BYTES_MET), "-D", "-",
              "-H", "User-Agent: " + USER_AGENT]
   if (lastModified) cmd.push("-H", "If-Modified-Since: " + lastModified)
   cmd.push(url)
@@ -573,6 +594,7 @@ function metCommand(url, lastModified, maxTimeSec) {
 // last one, and a 304 with no body at all. A transport error gives status 0.
 function parseCurlResponse(raw) {
   var result = { status: 0, lastModified: "", body: "" }
+  if (responseTooLarge(raw, MAX_BYTES_MET)) return result
   var rest = String(raw || "").replace(/^\s+/, "")
   while (/^HTTP\/[0-9.]+ [0-9]{3}/.test(rest)) {
     var end = rest.search(/\r?\n\r?\n/)
@@ -1079,6 +1101,7 @@ if (typeof module !== "undefined") {
     GRAPH_HOURS_MIN: GRAPH_HOURS_MIN, GRAPH_HOURS_MAX: GRAPH_HOURS_MAX,
     FORCED_REFRESH_FLOOR_MS: FORCED_REFRESH_FLOOR_MS, RETRY_LIMIT: RETRY_LIMIT, RETRY_DELAY_MS: RETRY_DELAY_MS,
     TEXTFORECAST_INTERVAL_MS: TEXTFORECAST_INTERVAL_MS, IP_LOCATION_URLS: IP_LOCATION_URLS,
+    MAX_BYTES_LOOKUP: MAX_BYTES_LOOKUP, MAX_BYTES_MET: MAX_BYTES_MET, responseTooLarge: responseTooLarge,
     GEOCLUE_PROBE_COMMAND: GEOCLUE_PROBE_COMMAND, TEXTFORECAST_URL: TEXTFORECAST_URL, GLYPH_UNAVAILABLE: GLYPH_UNAVAILABLE,
     refreshMinutes: refreshMinutes, graphHours: graphHours, settingBool: settingBool,
     // units and formatting

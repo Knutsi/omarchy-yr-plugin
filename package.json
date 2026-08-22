@@ -1,6 +1,6 @@
 {
   "name": "omarchy-yr-plugin",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "private": true,
   "description": "Unofficial yr.no (MET Norway) weather widget for the Omarchy bar",
   "license": "MIT",

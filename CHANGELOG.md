@@ -6,6 +6,16 @@ All notable changes to this plugin are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.3.2] — 2026-08-22
+
+### Security
+- Every HTTP response is now size-capped — 256 KiB for the lookup services
+  (geocoders, IP location, reverse lookup), 2 MiB for MET Norway — both at
+  curl (`--max-filesize`) and again before JSON parsing, so a misbehaving or
+  hostile endpoint can no longer grow the shell's memory without bound.
+  Raised by the marketplace security review
+  (HANCORE-linux/omarchy-plugin-marketplace#1448).
+
 ## [0.3.1] — 2026-08-22
 
 ### Changed
@@ -61,7 +71,9 @@ All notable changes to this plugin are documented here. The format follows
   graph, daily forecast, units (°C/°F/K), location shared with Omarchy's stock
   weather widget, IP-based auto-detection.
 
-[Unreleased]: https://github.com/Knutsi/omarchy-yr-plugin/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/Knutsi/omarchy-yr-plugin/compare/v0.3.2...HEAD
+[0.3.2]: https://github.com/Knutsi/omarchy-yr-plugin/compare/v0.3.1...v0.3.2
+[0.3.1]: https://github.com/Knutsi/omarchy-yr-plugin/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/Knutsi/omarchy-yr-plugin/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/Knutsi/omarchy-yr-plugin/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/Knutsi/omarchy-yr-plugin/releases/tag/v0.1.0
