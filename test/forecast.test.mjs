@@ -103,6 +103,9 @@ test("a broken temperature field cannot size the graph", () => {
     assert.deepEqual(Model.dailyForecast(doc, "2026-08-21"), [], String(bad))
   }
   assert.equal(Model.validTempC(-40), -40)
+  assert.equal(Model.num("1e999"), null, "num() is finite-only")
+  assert.equal(Model.num("Infinity"), null)
+  assert.equal(Model.currentCondition({ time: "t", data: { instant: { details: { air_temperature: 10, wind_speed: "Infinity", relative_humidity: "1e999" } } } }).windMs, null)
   assert.equal(Model.validTempC("17.2"), 17.2)
   assert.deepEqual(Model.ticksFor(-1e7, 1e7), [])
   assert.deepEqual(Model.ticksFor(NaN, 10), [])

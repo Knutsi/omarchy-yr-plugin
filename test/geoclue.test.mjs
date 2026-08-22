@@ -33,6 +33,7 @@ test("GeoClue where-am-i output parsing and states", () => {
   assert.match(Model.gpsStateSummary("ok"), /GeoClue/)
   assert.deepEqual(Model.GEOCLUE_PROBE_COMMAND.slice(0, 3), ["timeout", String(Model.CHILD_TIMEOUT_S), "sh"])
   assert.ok(Model.whereAmICommand().join(" ").includes("where-am-i -t 12"))
+  assert.ok(Model.whereAmICommand()[2].endsWith("| head -c " + Model.MAX_BYTES_LOOKUP), "stdout is capped inside the fixed script")
 })
 
 test("where-am-i output is bounded and its text is plain", () => {
