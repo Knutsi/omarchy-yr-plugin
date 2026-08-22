@@ -18,7 +18,7 @@
 // the User-Agent, round coordinates to 4 decimals, poll at most every
 // 10 minutes, revalidate with If-Modified-Since, credit "MET Norway".
 
-var VERSION = "0.3.0"
+var VERSION = "0.3.1"
 var USER_AGENT = "omarchy-yr-plugin/" + VERSION + " github.com/Knutsi/omarchy-yr-plugin"
 var ATTRIBUTION = "Data from MET Norway"
 
@@ -528,7 +528,7 @@ function gpsStateSummary(state) {
 
 function gpsStateHelp(state) {
   if (state === "no-agent") return "GeoClue is installed but no authorisation agent is running. Add  o.launch_on_start(\"/usr/lib/geoclue-2.0/demos/agent\")  to ~/.config/hypr/autostart.lua and reload Hyprland."
-  if (state === "missing") return "GPS is not available: the system location service is not installed. Install it with  sudo pacman -S geoclue  (see the README for the agent setup)."
+  if (state === "missing") return "GPS is not available: the system location service is not installed. Install the geoclue package (see the README for setup)."
   return ""
 }
 

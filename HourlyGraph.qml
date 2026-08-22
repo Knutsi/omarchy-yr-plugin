@@ -4,15 +4,14 @@ import "Model.js" as Model
 
 // yr.no-style hour-by-hour graph: weather symbols along the top, a
 // temperature curve over precipitation bars, hour labels underneath.
-// Everything is painted in theme colours passed in by the panel.
+// Everything is painted in the bar foreground at varying opacity so the graph
+// stays quiet in every theme, however loud its accent or red is.
 Item {
   id: root
 
   property var points: []          // Model.hourlyForecast() output
   property string unit: "metric"
   property color foreground: Color.foreground
-  property color tempColor: Color.urgent
-  property color precipColor: Color.accent
   property string fontFamily: Style.font.family
 
   readonly property int count: points ? points.length : 0
@@ -104,7 +103,6 @@ Item {
       // Precipitation bars, scaled so the wettest hour fills ~55% of the plot.
       if (s.hasPrecip) {
         var barMax = plotH * 0.55
-        var pc = root.precipColor
         ctx.textAlign = "center"
         for (var i = 0; i < n; i++) {
           var mm = pts[i].precipMm || 0
@@ -112,21 +110,21 @@ Item {
           var bh = Math.max(2, mm / s.precipMax * barMax)
           var bw = Math.max(2, colW * 0.62)
           var bx = root.columnCenter(i) - bw / 2
-          ctx.fillStyle = Qt.rgba(pc.r, pc.g, pc.b, 0.55)
+          ctx.fillStyle = Qt.rgba(fg.r, fg.g, fg.b, 0.28)
           ctx.fillRect(bx, bottom - bh, bw, bh)
           if (colW >= Style.space(16)) {
-            ctx.fillStyle = Qt.rgba(pc.r, pc.g, pc.b, 0.95)
+            ctx.fillStyle = Qt.rgba(fg.r, fg.g, fg.b, 0.6)
             ctx.fillText(Model.formatPrecip(mm, root.unit).replace(/ (mm|in)$/, ""), root.columnCenter(i), bottom - bh - captionPx * 0.7)
           }
         }
         // Right axis: precipitation unit hint.
         ctx.textAlign = "left"
-        ctx.fillStyle = Qt.rgba(pc.r, pc.g, pc.b, 0.8)
+        ctx.fillStyle = Qt.rgba(fg.r, fg.g, fg.b, 0.6)
         ctx.fillText(root.unit === "imperial" ? "in" : "mm", left + w + Style.space(6), bottom - barMax)
       }
 
       // Temperature curve (smoothed through column centres) with a soft fill.
-      var tc = root.tempColor
+      var curve = Qt.rgba(fg.r, fg.g, fg.b, 0.75)
       var xs = [], ys = []
       for (var k = 0; k < n; k++) {
         xs.push(root.columnCenter(k))
@@ -148,17 +146,17 @@ Item {
       ctx.lineTo(xs[n - 1], bottom)
       ctx.lineTo(xs[0], bottom)
       ctx.closePath()
-      ctx.fillStyle = Qt.rgba(tc.r, tc.g, tc.b, 0.10)
+      ctx.fillStyle = Qt.rgba(fg.r, fg.g, fg.b, 0.06)
       ctx.fill()
 
       tracePath()
       ctx.lineWidth = 2
       ctx.lineJoin = "round"
-      ctx.strokeStyle = tc
+      ctx.strokeStyle = curve
       ctx.stroke()
 
       // "Now" marker at the first column.
-      ctx.fillStyle = tc
+      ctx.fillStyle = curve
       ctx.beginPath()
       ctx.arc(xs[0], ys[0], 3, 0, Math.PI * 2)
       ctx.fill()
@@ -168,8 +166,6 @@ Item {
   onPointsChanged: canvas.requestPaint()
   onUnitChanged: canvas.requestPaint()
   onForegroundChanged: canvas.requestPaint()
-  onTempColorChanged: canvas.requestPaint()
-  onPrecipColorChanged: canvas.requestPaint()
   onWidthChanged: canvas.requestPaint()
   onPlotHeightChanged: canvas.requestPaint()
   onColumnWidthChanged: canvas.requestPaint()

@@ -6,6 +6,15 @@ All notable changes to this plugin are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.3.1] — 2026-08-22
+
+### Changed
+- The hourly graph is drawn in the theme foreground at varying opacity instead
+  of `urgent`/`accent`, so themes with a bright red or a loud accent no longer
+  make the temperature curve and rain bars shout.
+- The GPS tooltip points to the README instead of quoting a `sudo pacman`
+  command.
+
 ## [0.3.0] — 2026-08-22
 
 ### Changed

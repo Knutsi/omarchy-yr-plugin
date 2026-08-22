@@ -27,7 +27,7 @@ test("GeoClue where-am-i output parsing and states", () => {
   assert.equal(deniedLater.denied, false)
   assert.equal(Model.parseWhereAmI("").latitude, null)
 
-  assert.match(Model.gpsStateHelp("missing"), /pacman -S geoclue/)
+  assert.match(Model.gpsStateHelp("missing"), /geoclue package/)
   assert.match(Model.gpsStateHelp("no-agent"), /autostart\.lua/)
   assert.equal(Model.gpsStateHelp("ok"), "")
   assert.match(Model.gpsStateSummary("ok"), /GeoClue/)
