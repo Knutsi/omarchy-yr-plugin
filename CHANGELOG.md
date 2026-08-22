@@ -5,6 +5,8 @@ All notable changes to this plugin are documented here. The format follows
 [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
+
+## [0.4.0] — 2026-08-22
 ### Added
 - ← / → (or h / l) in the popup switch the location between the pinned
   places, wrapping around; `nextPinned` / `previousPinned` IPC verbs do the
@@ -19,6 +21,8 @@ All notable changes to this plugin are documented here. The format follows
   nearest town — and a coordinate page otherwise. The URL is fixed text plus
   a validated location id or the rounded coordinates, opened through
   `omarchy-launch-browser` as an argument list.
+- `test/rendering.test.mjs`: every `Text`/`PanelSectionHeader` in plugin QML
+  must be PlainText, and every parser is probed with tainted fixtures.
 ### Changed
 - The popup keeps its layout while data loads: the graph, the days row and
   (in Norway) the tekstvarsel box reserve their final size with quiet
@@ -44,9 +48,6 @@ All notable changes to this plugin are documented here. The format follows
   under `timeout`, and a place name or forecast text can never start with
   a dash where a helper would read it as an option.
 - README states plainly what data leaves the machine, to whom, and when.
-
-## [0.3.3] — 2026-08-22
-### Security
 - Strings from outside the plugin (MET warnings and text forecasts, geocoder
   and IP-location names, the stored location file) are rendered as plain
   text: every parser strips angle brackets and control characters and caps
@@ -58,10 +59,6 @@ All notable changes to this plugin are documented here. The format follows
 - An unknown MET `symbol_code` is shown as condition text only when it is
   shaped like one (`[a-z_]`); the Photon reverse lookup's country code must be
   a two-letter code.
-### Added
-- `test/rendering.test.mjs`: every `Text`/`PanelSectionHeader` in plugin QML
-  must be PlainText, and every parser is probed with tainted fixtures.
-
 ## [0.3.2] — 2026-08-22
 
 ### Added
