@@ -61,7 +61,13 @@ External input is hostile. Anything that enters the long-lived shell process
   object, longer ones fail with "too many arguments") — found the hard way
   with `places`. Scalars go through `settingCommand`; lists go in-process
   through `shell.updateEntryInline(pluginId, entry)` (`Service.savePlaces`),
-  built from the shell's live entry.
+  built from the shell's live entry;
+- **a list read back from `settings` is not an `Array`**: after a shell
+  restart the bar's settings push hands the plugin a QML sequence wrapper —
+  indexable, with a `length`, but `Array.isArray` is false (the Tailscale
+  panel tests `instanceof Array` for the same reason). `Model.toArray()`
+  copies any array-like; every list parser must go through it. Verified by
+  A/B restarts: `Array.isArray` alone → 0 places, `toArray` → the stored list.
 
 New network calls go through `curlCommand()`/`metCommand()` — never build a
 curl argv inline; `test/meta.test.mjs` counts the `["curl"` literals and
