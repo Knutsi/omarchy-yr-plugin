@@ -32,6 +32,9 @@ Column {
     hint = ""
     selectedIndex = 0
     selectedPlace = null
+    // Reset the query first: assigning the same text again would not fire
+    // onQueryChanged, and the search would never run.
+    search.query = ""
     search.clear()
     field.text = location.configured.name
     search.query = field.text
@@ -41,6 +44,7 @@ Column {
   }
 
   function end() {
+    search.query = ""
     search.clear()
     hint = ""
   }

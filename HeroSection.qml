@@ -106,6 +106,9 @@ Item {
         font.pixelSize: Style.font.body
         font.letterSpacing: 1
         anchors.verticalCenter: parent.verticalCenter
+        // Leave room for the two buttons; long names are elided.
+        width: Math.min(implicitWidth, right.width - Style.space(90))
+        elide: Text.ElideRight
 
         TapHandler { onTapped: root.locationTapped() }
         HoverHandler { id: locationHover; cursorShape: Qt.PointingHandCursor }
