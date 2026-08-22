@@ -23,8 +23,19 @@ commands anywhere in plugin code, so keep those in the README only.
 External input is hostile. Anything that enters the long-lived shell process
 — HTTP bodies, process stdout, files — must have:
 
-- an explicit size ceiling: curl `--max-filesize` **and** a pre-parse length
-  check (`responseTooLarge` / `MAX_BYTES_*` in `Model.js`), asserted by a test;
+- an explicit size ceiling **at the source**, before the bytes are
+  allocated in the shell — curl `--max-filesize`, `head -c` for files and
+  for process output — **and** a pre-parse length check (`responseTooLarge` /
+  `MAX_BYTES_*` in `Model.js`), asserted by a test. A file is never read
+  through `FileView.text()`/`data()`: a `FileView` is a change watcher only
+  (`preload: false`) and the bytes come through `readFileCommand()`
+  (`head -c cap+1`, so an oversized file still trips the parser's ceiling
+  instead of truncating into a valid-looking prefix). `CurlRequest`'s
+  `collect: false` is **not** a ceiling: QProcess drains a child's stdout into
+  its own buffer whether or not a collector is attached (measured ~1:1 with
+  the bytes written), so it only spares the string copy — use it for helpers
+  that print at most a line, and bound any noisy child at the source
+  (`head -c` inside a fixed script, as for `where-am-i`);
 - a time bound (`--max-time`) and bounded retries;
 - a parser that fails closed on garbage (try/catch → the empty value);
 - **plain-text rendering**: every string that may be shown is passed through
@@ -83,6 +94,12 @@ external-input path, answer explicitly: what happens at 10 GB, at 0 bytes,
 on garbage, on a hang, on HTTP 500, when a field is
 `<img src="http://…">`, when a number is 1e308, and when a string is
 `--exec` or `constructor` — and encode each answer as a test.
+
+Why "at the source" (marketplace review of v0.4.0, issue #1448, finding #3):
+`FileView.text()` had loaded the whole user-writable `weather.json` before
+`parseLocationFile()` applied its 256 KiB check — "an oversized file is
+already allocated and retained in the long-lived shell before the limit
+runs". A ceiling that runs after the allocation is not a ceiling.
 
 Why the rendering rule exists (marketplace review of v0.3.2, issue #1448):
 QtQuick `Text` defaults to `Text.AutoText`, which auto-detects markup and

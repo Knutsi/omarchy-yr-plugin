@@ -7,10 +7,17 @@ import Quickshell.Io
 // (Qt.callLater), after Quickshell has cleared `running`, so a handler may
 // immediately start the next request on the same object — chaining from
 // StdioCollector.onStreamFinished or straight out of onExited is not safe.
+//
+// `collect: false` attaches no collector: the output is not copied into a
+// JS string. It is NOT a ceiling — QProcess still drains the pipe into its
+// own buffer for the life of the process (measured: ~1:1 with the bytes
+// written) — so it is only for helpers that print at most a line and whose
+// exit code is all that matters. A noisy child must be bounded at the source.
 Item {
   id: root
 
   property bool running: false
+  property bool collect: true
   readonly property string tag: proc.tag
 
   signal finished(string tag, string stdout, int exitCode)
@@ -29,13 +36,15 @@ Item {
     running = false
   }
 
+  StdioCollector { id: collector; waitForEnd: true }
+
   Process {
     id: proc
     property string tag: ""
-    stdout: StdioCollector { id: collector; waitForEnd: true }
+    stdout: root.collect ? collector : null
     onExited: function(exitCode) {
       var doneTag = proc.tag
-      var text = String(collector.text || "")
+      var text = root.collect ? String(collector.text || "") : ""
       Qt.callLater(function() {
         root.running = false
         root.finished(doneTag, text, exitCode)

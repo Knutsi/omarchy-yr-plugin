@@ -183,15 +183,17 @@ in [docs/geoclue.md](docs/geoclue.md).
 
 ## Dependencies and privacy
 
-Everything it needs ships with Omarchy: `curl`, `sh`, `timeout`, `grep`,
-`pgrep`, `omarchy-launch-browser` and the Quickshell shell itself. No
+Everything it needs ships with Omarchy: `curl`, `sh`, `timeout`, `head`,
+`grep`, `pgrep`, `omarchy-launch-browser` and the Quickshell shell itself. No
 packages are installed, no privileges are requested, and the only files
 written are your own `shell.json` entry (settings via `omarchy bar set`,
 the saved places through the shell's own config writer — both on a click)
 and the shared location file (via `omarchy-weather-location`, on a click). Every helper is started with an argument list, never through a
 shell string that contains data (the two GeoClue probes run fixed `sh -c`
 scripts with no interpolated values), and each one the plugin waits for
-runs under `timeout`.
+runs under `timeout`. Everything that enters the shell is capped before it
+is read: HTTP bodies at curl, the shared location file and GeoClue's output
+through `head -c`, and then once more before parsing.
 
 What leaves the machine, and when:
 

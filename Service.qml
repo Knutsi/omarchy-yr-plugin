@@ -168,6 +168,7 @@ Item {
 
   CurlRequest {
     id: settingsRequest
+    collect: false      // only the exit code matters
     onFinished: function(tag, stdout, exitCode) {
       root.settingsError = exitCode === 0 ? "" : "Could not save setting '" + tag + "' (omarchy bar set failed)"
       root.pumpSettings()
