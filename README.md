@@ -225,6 +225,12 @@ plugin, but an already mounted bar slot keeps its running instance (Omarchy
 4.0) — run `omarchy restart shell` to see QML changes. See
 [CHANGELOG.md](CHANGELOG.md) for releases.
 
+## Contact
+
+Questions, ideas or bug reports: open an
+[issue](https://github.com/Knutsi/omarchy-yr-plugin/issues), or reach me on
+X at [@knutsi](https://x.com/knutsi).
+
 ## Credits and licence
 
 - Weather data, warnings and text forecasts from [MET Norway](https://api.met.no/),
