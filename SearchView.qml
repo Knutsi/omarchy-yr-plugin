@@ -250,6 +250,18 @@ Column {
         onPinToggled: root.service.togglePin(modelData)
       }
     }
+
+    Text {
+      textFormat: Text.PlainText
+      visible: root.places.some(function(p) { return p.pinned })
+      anchors.left: parent.left
+      anchors.leftMargin: root.gutter
+      topPadding: Style.space(6)
+      text: "Tip: ← → in the forecast view switch between pinned places"
+      color: root.faded
+      font.family: root.fontFamily
+      font.pixelSize: Style.font.caption
+    }
   }
 
   PanelSeparator { width: parent.width }

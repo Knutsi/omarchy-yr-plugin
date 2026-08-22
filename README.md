@@ -72,6 +72,7 @@ top to bottom:
 | Middle click | Force a refresh (re-detects the location too) |
 | Right click | Desktop notification with the current conditions |
 | Click the location name, its magnifier, or the `Location` button | Search view: the box opens empty with your saved places under it (pinned first, then the last five searches); pick one with ↑/↓ + Enter or a click, or type to search. Esc / ✕ goes back; "Use automatic location" returns to IP auto-detect |
+| ← / → (or h / l) in the popup | Switch the location to the previous / next **pinned** place (recent searches are not included) |
 | Click the pin on a saved place | Pin it so it stays at the top of the list (up to five); click again to unpin. Recent searches beyond the last five fall off on their own |
 | Click the globe button | Open the same location on [yr.no](https://www.yr.no) in your default browser — the place's own page when yr's register knows it (looked up by the name in use, then by the nearest town), otherwise a coordinate page. Norwegian site for a Norwegian locale, English otherwise |
 | Click the satellite button | Locate with GPS / Wi-Fi positioning through GeoClue — see [docs/geoclue.md](docs/geoclue.md). Dimmed with an explanatory tooltip when the service is missing |
@@ -89,6 +90,7 @@ omarchy-shell io.github.knutsi.yr toggleUnit        # °C → °F → K → °C
 omarchy-shell io.github.knutsi.yr unit imperial     # set a unit directly
 omarchy-shell io.github.knutsi.yr textForecast false  # hide/show the tekstvarsel
 omarchy-shell io.github.knutsi.yr location          # print the location in use
+omarchy-shell io.github.knutsi.yr nextPinned        # switch to the next pinned place (previousPinned goes back)
 omarchy-shell io.github.knutsi.yr status            # JSON: location, save/GPS state, last fetch, errors
 ```
 

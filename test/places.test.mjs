@@ -73,6 +73,26 @@ test("togglePin: at most five pins, unpinning makes a recent", () => {
   assert.deepEqual(Model.togglePin(unpinned, null), unpinned)
 })
 
+test("neighbourPinned walks the pins, wrapping, by position", () => {
+  const a = { name: "Oslo", latitude: 59.9127, longitude: 10.7461, pinned: true }
+  const b = { name: "Porto", latitude: 41.1485, longitude: -8.611, pinned: true }
+  const c = { name: "Bergen", latitude: 60.3913, longitude: 5.3221, pinned: true }
+  const recent = { name: "Berlin", latitude: 52.52, longitude: 13.405, pinned: false }
+  const places = [a, b, c, recent]
+  assert.equal(Model.neighbourPinned(places, a, 1).name, "Porto")
+  assert.equal(Model.neighbourPinned(places, c, 1).name, "Oslo", "wraps forward")
+  assert.equal(Model.neighbourPinned(places, a, -1).name, "Bergen", "wraps backward")
+  assert.equal(Model.neighbourPinned(places, { name: "Oslo sentrum", latitude: 59.915, longitude: 10.75 }, 1).name, "Porto", "position decides, not the name")
+  assert.equal(Model.neighbourPinned(places, recent, 1).name, "Oslo", "from an unpinned place: the first pin")
+  assert.equal(Model.neighbourPinned(places, recent, -1).name, "Bergen", "…or the last, going back")
+  assert.equal(Model.neighbourPinned(places, null, 1).name, "Oslo", "no location at all: the first pin")
+  assert.equal(Model.neighbourPinned([a, recent], a, 1), null, "the only pin is the place in use: nothing to do")
+  assert.equal(Model.neighbourPinned([recent], a, 1), null, "no pins")
+  assert.equal(Model.neighbourPinned([], a, 1), null)
+  assert.equal(Model.neighbourPinned("garbage", a, 1), null)
+  assert.equal(Model.neighbourPinned(places, { latitude: "x", longitude: 1 }, 1).name, "Oslo", "unusable current position → first pin")
+})
+
 test("yr.no link: a URL from numbers and literals only, opened as argv", () => {
   assert.equal(Model.yrUrl(59.91273, 10.74609, "nb_NO.UTF-8"), "https://www.yr.no/nb/v%C3%A6rvarsel/daglig-tabell/59.9127,10.7461")
   assert.equal(Model.yrUrl(59.91273, 10.74609, "nn_NO"), "https://www.yr.no/nn/v%C3%AArvarsel/dagleg-tabell/59.9127,10.7461")
