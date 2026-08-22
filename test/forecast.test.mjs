@@ -107,6 +107,7 @@ test("MET requests: URL, User-Agent, If-Modified-Since, 4-decimal coordinates", 
   const cmd = Model.metCommand(Model.forecastUrl(59.9, 10.7), "Fri, 21 Aug 2026 19:19:53 GMT", 10)
   assert.equal(cmd[0], "curl")
   assert.ok(cmd.includes("--compressed") && cmd.includes("-D"))
+  assert.ok(cmd.join(" ").includes("--max-filesize " + Model.MAX_BYTES_MET))
   assert.ok(cmd.includes("User-Agent: " + Model.USER_AGENT))
   assert.ok(cmd.includes("If-Modified-Since: Fri, 21 Aug 2026 19:19:53 GMT"))
   assert.ok(!Model.metCommand(Model.TEXTFORECAST_URL, "", 15).some(a => /If-Modified-Since/.test(a)))
@@ -141,6 +142,15 @@ test("parseCurlResponse handles 200, 304, redirects, 100-continue, 429 bodies, t
 
   assert.equal(Model.parseCurlResponse("").status, 0)
   assert.equal(Model.parseCurlResponse("curl: (6) Could not resolve host").status, 0)
+
+  // Oversized dumps are refused before any header or JSON work — the guard
+  // behind curl's own --max-filesize (which curl < 8.4 cannot apply to
+  // chunked/compressed bodies). Padding keeps the dump otherwise valid.
+  const oversize = Model.parseCurlResponse(headers200 + fixture("locationforecast-compact.json") + " ".repeat(Model.MAX_BYTES_MET))
+  assert.equal(oversize.status, 0)
+  assert.equal(oversize.body, "")
+  assert.ok(Model.responseTooLarge("x".repeat(Model.MAX_BYTES_MET + 1), Model.MAX_BYTES_MET))
+  assert.ok(!Model.responseTooLarge("x".repeat(Model.MAX_BYTES_MET), Model.MAX_BYTES_MET), "exactly at the cap still parses")
   assert.equal(Model.fetchErrorText(0), "no response")
   assert.match(Model.fetchErrorText(429), /rate limited/)
   assert.equal(Model.fetchErrorText(200), "bad response")

@@ -68,6 +68,7 @@ test("geocode request fan-out and commit rules", () => {
   assert.deepEqual(three.map(r => r.source), ["open-meteo", "kartverket", "photon"])
   assert.ok(three[1].command.join(" ").includes("sok=Sanderst%C3%B8len"))
   assert.ok(three.every(r => r.command.includes("User-Agent: " + Model.USER_AGENT)))
+  assert.ok(three.every(r => r.command.join(" ").includes("--max-filesize " + Model.MAX_BYTES_LOOKUP)))
   assert.equal(Model.locationCommit("Nowhere", [], 0), null, "no match → nothing to save")
   assert.deepEqual(Model.locationCommit("", [], 0), Model.emptyLocation())
   const choices = [{ name: "A", latitude: 1, longitude: 2 }, { name: "B", latitude: 3, longitude: 4 }]
@@ -83,6 +84,19 @@ test("keyboard selection follows the place, not the row, when sources arrive lat
   assert.equal(Model.suggestionIndexFor([a, b], { name: "Gone", latitude: 9, longitude: 9 }, 1), 1, "vanished → keep index")
   assert.equal(Model.suggestionIndexFor([a], null, 5), 0, "clamped")
   assert.equal(Model.suggestionIndexFor([], null, 2), 0)
+})
+
+test("oversized lookup responses are refused, not parsed", () => {
+  // Trailing whitespace keeps each fixture valid JSON, so only the size cap
+  // can be what rejects it.
+  const pad = " ".repeat(Model.MAX_BYTES_LOOKUP)
+  assert.deepEqual(Model.parseGeocodeResponse("photon", fixture("photon-sanderstolen.json") + pad), [])
+  assert.deepEqual(Model.parseGeocodeResponse("kartverket", fixture("kartverket-sanderstolen.json") + pad, "Sanderstølen"), [])
+  assert.equal(Model.parsePhotonReverse(fixture("photon-reverse.json") + pad), null)
+  assert.equal(Model.parseKartverketPoint(fixture("kartverket-punkt.json") + pad), "")
+  assert.deepEqual(Model.parseIpLocation('{"city":"Oslo","latitude":59.9,"longitude":10.7}' + pad), Model.emptyLocation())
+  assert.equal(Model.parseIpLocation('{"city":"Oslo","latitude":59.9,"longitude":10.7}').name, "Oslo", "same body under the cap parses")
+  assert.ok(Model.curlCommand("https://ipwho.is/").join(" ").includes("--max-filesize " + Model.MAX_BYTES_LOOKUP))
 })
 
 test("reverse lookup names a GPS fix", () => {

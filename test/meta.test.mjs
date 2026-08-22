@@ -34,6 +34,33 @@ test("manifest shape for the marketplace", () => {
   assert.ok(manifest.name.length <= 120 && manifest.description.length <= 500)
 })
 
+test("every curl invocation carries a time bound and a size ceiling", () => {
+  // Tripwire: network requests must go through curlCommand()/metCommand()
+  // (CLAUDE.md "Engineering invariants"). A new `["curl"` literal in
+  // Model.js means a new builder — give it --max-time and --max-filesize
+  // and add its output to the list below.
+  const source = readFileSync(new URL("../Model.js", import.meta.url), "utf8")
+  assert.equal((source.match(/\["curl"/g) || []).length, 2, "curl argv literals beyond curlCommand/metCommand")
+
+  const commands = [
+    Model.curlCommand("https://example.test/"),
+    Model.metCommand("https://example.test/", "", 10),
+    Model.metCommand("https://example.test/", "Fri, 21 Aug 2026 19:19:53 GMT", 15),
+    Model.reverseCommand(60.8274, 9.139),
+    Model.kartverketPointCommand(60.8274, 9.139),
+    ...Model.geocodeRequests("Sanderstølen").map(r => r.command),
+    ...Model.IP_LOCATION_URLS.map(url => Model.curlCommand(url))
+  ]
+  assert.ok(commands.length >= 8, "the builder list above went stale")
+  for (const argv of commands) {
+    const cmd = argv.join(" ")
+    assert.equal(argv[0], "curl", cmd)
+    assert.ok(parseFloat(argv[argv.indexOf("--max-time") + 1]) > 0, "time bound: " + cmd)
+    const size = parseInt(argv[argv.indexOf("--max-filesize") + 1], 10)
+    assert.ok(size > 0 && size <= Model.MAX_BYTES_MET, "size ceiling: " + cmd)
+  }
+})
+
 test("settings parsing and clamps", () => {
   assert.equal(Model.refreshMinutes("3"), 10)
   assert.equal(Model.refreshMinutes(999), 180)
