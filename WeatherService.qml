@@ -102,9 +102,16 @@ Item {
     textFetcher.fetch()
   }
 
+  // Another place: the old numbers must not show under the new name.
   Connections {
     target: root.location
-    function onKeyChanged() { if (root.location.key !== "") Qt.callLater(function() { root.refresh(false) }) }
+    function onKeyChanged() {
+      root.forecast = null
+      root.alerts = []
+      root.fetchError = ""
+      root.retries = 0
+      if (root.location.key !== "") Qt.callLater(function() { root.refresh(false) })
+    }
   }
 
   // Regular refresh, jittered so installs never line up on the minute.

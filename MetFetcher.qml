@@ -21,9 +21,15 @@ Item {
   signal notModified(string key)
   signal failed(int status, string key)
 
+  // A fetch asked for while a (possibly cancelled) process is still winding
+  // down is remembered and issued as soon as that process is gone.
+  property bool pending: false
+
   function fetch() {
-    if (!url || request.running) return false
-    return request.start(Model.metCommand(url, lastModified, maxTimeSec), key)
+    if (!url) return false
+    if (request.start(Model.metCommand(url, lastModified, maxTimeSec), key)) return true
+    pending = true
+    return false
   }
 
   // Forget the validator so the next fetch is unconditional.
@@ -37,6 +43,10 @@ Item {
   CurlRequest {
     id: request
     onFinished: function(tag, stdout, exitCode) {
+      if (root.pending) {
+        root.pending = false
+        Qt.callLater(root.fetch)
+      }
       if (tag !== root.key) return
       var response = Model.parseCurlResponse(stdout)
       root.status = response.status
