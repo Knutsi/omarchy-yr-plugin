@@ -26,6 +26,11 @@ test("parsePlaces treats the stored array as outside input", () => {
   assert.deepEqual(Model.parsePlaces([place(1, false), place(1, true), { ...place(1, false), name: "place 1 " }]).length, 1, "same place within 2 km merges")
   assert.equal(Model.parsePlaces([place(2, false), place(2, true)])[0].pinned, true, "a pinned copy wins over a recent one")
   assert.equal(Model.parsePlaces(Array.from({ length: 5000 }, (_, i) => place(i % 7, false))).length, 5, "long arrays are scanned only so far")
+  // An array-like (QML sequence wrapper after a C++ round trip) counts as a list; a map with a length does not get confused.
+  const arrayLike = { length: 2, 0: { ...oslo, pinned: true }, 1: bergen }
+  assert.deepEqual(Model.parsePlaces(arrayLike).map(p => p.name), ["Oslo", "Bergen"])
+  assert.deepEqual(Model.parsePlaces({ length: Infinity }), [])
+  assert.deepEqual(Model.parsePlaces({ length: "2", 0: oslo }), [])
 })
 
 test("rememberPlace keeps the latest five searches, newest first, behind the pins", () => {

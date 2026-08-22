@@ -521,12 +521,25 @@ function pinnedCount(places) {
 
 // Pinned first (at most MAX_PINNED, in stored order), then the latest
 // searches (at most MAX_RECENT, newest first); duplicates and garbage dropped.
+// A list that crossed QML's C++ boundary (the bar's settings push) can come
+// back as a sequence wrapper: indexable, with a length, but not an Array.
+function toArray(value) {
+  if (Array.isArray(value)) return value
+  if (value && typeof value === "object" && typeof value.length === "number" && isFinite(value.length)) {
+    var out = []
+    for (var i = 0; i < value.length && i < 1000; i++) out.push(value[i])
+    return out
+  }
+  return null
+}
+
 function parsePlaces(value) {
   var rows = value
   if (typeof rows === "string") {
     try { rows = JSON.parse(rows) } catch (e) { return [] }
   }
-  if (!Array.isArray(rows)) return []
+  rows = toArray(rows)
+  if (!rows) return []
   var pinned = [], recent = []
   for (var i = 0; i < rows.length && i < 100; i++) {
     var row = rows[i]

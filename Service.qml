@@ -141,6 +141,7 @@ Item {
         textArea: weatherService.textArea,
         unit: weatherService.unit,
         textForecast: weatherService.textForecastEnabled,
+        places: root.places.length,
         pendingSettings: root.settingsQueue.length,
         settingsError: root.settingsError
       })
