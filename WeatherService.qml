@@ -57,6 +57,9 @@ Item {
   readonly property string textArea: Model.textForecastArea(textFeatures, location.effective.latitude, location.effective.longitude)
   readonly property var textReport: Model.textForecastFor(textFeatures, location.effective.latitude, location.effective.longitude, tick.getTime(), textForecastAreaOverride)
   readonly property bool textAvailable: !!textReport
+  // Whether a tekstvarsel exists for this spot is known from the coordinates
+  // alone, so the popup can reserve its space before the fetch.
+  readonly property bool textExpected: location.hasLocation && Model.inTextForecastRegion(location.effective.latitude, location.effective.longitude)
 
   // Arrays keep their identity unless the content changed, so delegates are
   // not rebuilt every minute.

@@ -21,8 +21,11 @@ BarWidget {
   readonly property string barFormat: String(setting("barFormat", Model.DEFAULTS.barFormat))
   readonly property bool iconOnly: barFormat === "icon" || root.vertical
   readonly property bool unavailable: !!weather && !weather.current && weather.fetchError !== ""
-  readonly property string glyph: weather && weather.current ? weather.glyph : (unavailable ? Model.GLYPH_UNAVAILABLE : "")
-  readonly property string temp: weather ? weather.barTemperature : ""
+  // While the first forecast loads the pill shows a quiet placeholder of the
+  // same shape, so the bar does not reflow when the numbers arrive.
+  readonly property bool loading: !!weather && !weather.current && !unavailable
+  readonly property string glyph: weather && weather.current ? weather.glyph : (unavailable ? Model.GLYPH_UNAVAILABLE : (loading ? Model.iconForSymbol("cloudy") : ""))
+  readonly property string temp: weather ? (weather.barTemperature !== "" ? weather.barTemperature : (loading ? "--°" : "")) : ""
   readonly property string displayText: temp !== "" ? glyph + " " + temp : glyph
   readonly property string tooltip: !weather ? "Yr.no (unofficial)"
     : (weather.current ? [weather.conditionText, weather.temperatureText, service.location.displayName].filter(function(p) { return p !== "" }).join("  ·  ")

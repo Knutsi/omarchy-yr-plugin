@@ -179,25 +179,16 @@ Panel {
               }
             }
 
-            Text {
-              textFormat: Text.PlainText
-              visible: root.ready && !root.service.weather.current
-              anchors.horizontalCenter: parent.horizontalCenter
-              text: !root.ready ? ""
-                : (root.service.weather.fetchError !== "" ? "Forecast unavailable (" + root.service.weather.fetchError + ")"
-                : (root.service.location.hasLocation ? "Fetching forecast…"
-                : (root.service.location.detectError !== "" ? root.service.location.detectError : "Detecting location…")))
-              color: root.mutedText
-              font.family: root.fontFamily
-              font.pixelSize: Style.font.bodySmall
-              font.italic: true
-            }
+            // Every section below keeps its final size while data loads, so the
+            // popup does not grow in steps: the graph area shows the status
+            // until the first forecast, the days row shows placeholders, and
+            // the tekstvarsel box is reserved whenever the spot is in Norway.
 
             // Hour-by-hour graph
             PanelSeparator { visible: graphSection.visible; foreground: root.fg }
             Column {
               id: graphSection
-              visible: root.ready && root.service.weather.hourlyPoints.length > 1
+              visible: root.ready
               width: parent.width
               spacing: Style.space(4)
 
@@ -205,17 +196,37 @@ Panel {
                 textFormat: Text.PlainText
                 anchors.left: parent.left
                 anchors.leftMargin: root.gutter
-                text: "NEXT " + (root.ready ? root.service.weather.hourlyPoints.length : 0) + " HOURS"
+                text: "NEXT " + (root.ready && root.service.weather.hourlyPoints.length > 1 ? root.service.weather.hourlyPoints.length : (root.ready ? root.service.weather.graphHours : 24)) + " HOURS"
                 foreground: root.fg
                 fontFamily: root.fontFamily
               }
 
-              HourlyGraph {
+              Item {
                 width: parent.width
-                points: root.ready ? root.service.weather.hourlyPoints : []
-                unit: root.ready ? root.service.weather.unit : "metric"
-                foreground: root.fg
-                fontFamily: root.fontFamily
+                height: graph.implicitHeight
+
+                HourlyGraph {
+                  id: graph
+                  width: parent.width
+                  points: root.ready ? root.service.weather.hourlyPoints : []
+                  unit: root.ready ? root.service.weather.unit : "metric"
+                  foreground: root.fg
+                  fontFamily: root.fontFamily
+                }
+
+                Text {
+                  textFormat: Text.PlainText
+                  visible: graph.count <= 1
+                  anchors.centerIn: parent
+                  text: !root.ready ? ""
+                    : (root.service.weather.fetchError !== "" ? "Forecast unavailable (" + root.service.weather.fetchError + ")"
+                    : (root.service.location.hasLocation ? "Fetching forecast…"
+                    : (root.service.location.detectError !== "" ? root.service.location.detectError : "Detecting location…")))
+                  color: root.mutedText
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.bodySmall
+                  font.italic: true
+                }
               }
             }
 
@@ -223,7 +234,7 @@ Panel {
             PanelSeparator { visible: daysSection.visible; foreground: root.fg }
             Column {
               id: daysSection
-              visible: root.ready && root.service.weather.forecastDays.length > 0
+              visible: root.ready
               width: parent.width
               spacing: Style.space(8)
 
@@ -231,7 +242,7 @@ Panel {
                 textFormat: Text.PlainText
                 anchors.left: parent.left
                 anchors.leftMargin: root.gutter
-                text: "NEXT " + (root.ready ? root.service.weather.forecastDays.length : 0) + " DAYS"
+                text: "NEXT " + (root.ready && root.service.weather.forecastDays.length > 0 ? root.service.weather.forecastDays.length : 4) + " DAYS"
                 foreground: root.fg
                 fontFamily: root.fontFamily
               }
@@ -248,7 +259,8 @@ Panel {
             PanelSeparator { visible: textSection.visible; foreground: root.fg }
             TextForecastSection {
               id: textSection
-              visible: root.ready && root.service.weather.textForecastEnabled && root.service.weather.textAvailable
+              visible: root.ready && root.service.weather.textForecastEnabled && root.service.weather.textExpected
+              loaded: root.ready && !!root.service.weather.textFeatures
               width: parent.width
               report: root.ready ? root.service.weather.textReport : null
               foreground: root.fg
