@@ -69,7 +69,7 @@ top to bottom:
 | Action | Result |
 |---|---|
 | Left click the pill | Open / close the popup |
-| Middle click | Force a refresh (re-detects the location too) |
+| Middle click | Force a refresh of the forecast |
 | Right click | Desktop notification with the current conditions |
 | Click the location name, its magnifier, or the `Location` button | Search view: the box opens empty with your saved places under it (pinned first, then the last five searches); pick one with ↑/↓ + Enter or a click, or type to search. Esc / ✕ goes back; "Use automatic location" returns to IP auto-detect |
 | ← / → (or h / l) in the popup | Switch the location to the previous / next **pinned** place (recent searches are not included) |
@@ -134,10 +134,11 @@ Without stored coordinates the position is detected from your public IP
 address: the plugin asks [ipwho.is](https://ipwho.is) (falling back to
 [geojs.io](https://www.geojs.io)) what city the request came from, which
 means those services see your IP address — that is all they are sent, and
-it happens automatically, once per shell session (and on middle-click), for
-as long as no location is stored. City-level at best, and often off on
+it happens automatically, once per shell session, for as long as no
+location is stored. City-level at best, and often off on
 CG-NAT or satellite connections; set the location explicitly if the
-forecast looks wrong, and nothing is looked up from the IP again.
+forecast looks wrong, and nothing is looked up from the IP again. (It
+happens once per shell session, and again after "Use automatic location".)
 
 **Place search** asks three services at once and merges the answers:
 [Open-Meteo](https://open-meteo.com/en/docs/geocoding-api) (towns and
@@ -188,7 +189,9 @@ packages are installed, no privileges are requested, and the only files
 written are your own `shell.json` entry (settings via `omarchy bar set`,
 the saved places through the shell's own config writer — both on a click)
 and the shared location file (via `omarchy-weather-location`, on a click). Every helper is started with an argument list, never through a
-shell, and each one the plugin waits for runs under `timeout`.
+shell string that contains data (the two GeoClue probes run fixed `sh -c`
+scripts with no interpolated values), and each one the plugin waits for
+runs under `timeout`.
 
 What leaves the machine, and when:
 

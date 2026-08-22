@@ -71,6 +71,11 @@ test("yrUrl takes a validated id; anything else is the coordinate page; browserC
   const url = "https://www.yr.no/en/forecast/daily-table/1-84687"
   assert.deepEqual(Model.browserCommand(url), ["omarchy-launch-browser", url])
   assert.equal(Model.browserCommand("https://www.yr.no/en/forecast/daily-table/1-1?x=<img>"), null)
+  for (const bad of ["https://www.yr.no/en/forecast/daily-table/1-1/../../x", "https://www.yr.no/en/forecast/daily-table/--private",
+                     "https://www.yr.no/en/forecast/daily-table/1,2/extra", "https://www.yr.no/de/forecast/daily-table/1,2", "https://www.yr.no/en/forecast/1,2"]) {
+    assert.equal(Model.browserCommand(bad), null, bad)
+  }
+  for (const lang of ["nb_NO", "nn_NO", "en_GB"]) assert.ok(Model.browserCommand(Model.yrUrl(60.1, 10.2, lang, "1-84687")), lang + " with id")
 })
 
 test("the two yr lookups go through curlCommand and carry only a place name or coordinates", () => {

@@ -83,7 +83,7 @@ function plainText(value) {
 function num(value) {
   if (value === undefined || value === null || value === "") return null
   var n = parseFloat(String(value))
-  return isNaN(n) ? null : n
+  return isNaN(n) || !isFinite(n) ? null : n
 }
 
 function pad2(n) {
@@ -735,10 +735,12 @@ function yrUrl(latitude, longitude, localeName, id) {
   return YR_SITE + YR_PATHS[yrLanguage(localeName)] + target
 }
 
+// Exactly site / language / two path words / (lat,lon | id) — nothing else
+// is ever launched, whatever produced the string.
+var YR_URL = /^https:\/\/www\.yr\.no\/(nb|nn|en)\/[A-Za-z0-9%]+\/[A-Za-z0-9%\-]+\/(-?[0-9]+(\.[0-9]+)?,-?[0-9]+(\.[0-9]+)?|[0-9]{1,2}-[0-9]{1,10})$/
 function browserCommand(url) {
   var target = String(url || "")
-  if (target.indexOf(YR_SITE) !== 0 || /[^A-Za-z0-9%\/.,\-]/.test(target.slice(YR_SITE.length))) return null
-  return ["omarchy-launch-browser", target]
+  return YR_URL.test(target) ? ["omarchy-launch-browser", target] : null
 }
 
 // ---- yr's own location register, so the globe can open the place's page
@@ -842,7 +844,7 @@ var GEOCLUE_PROBE_COMMAND = ["timeout", String(CHILD_TIMEOUT_S), "sh", "-c",
 // share a GeoClue client). stderr is folded in so a denial can be recognised.
 var WHERE_AM_I_TIMEOUT_S = 12
 function whereAmICommand() {
-  return ["sh", "-c", "timeout " + (WHERE_AM_I_TIMEOUT_S + 2) + " /usr/lib/geoclue-2.0/demos/where-am-i -t " + WHERE_AM_I_TIMEOUT_S + " -a 8 2>&1"]
+  return ["sh", "-c", "timeout " + (WHERE_AM_I_TIMEOUT_S + 2) + " /usr/lib/geoclue-2.0/demos/where-am-i -t " + WHERE_AM_I_TIMEOUT_S + " -a 8 2>&1 | head -c " + MAX_BYTES_LOOKUP]
 }
 
 // where-am-i prints a block per update; the last one wins. Coordinates carry
