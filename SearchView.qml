@@ -3,9 +3,10 @@ import qs.Commons
 import qs.Ui
 import "Model.js" as Model
 
-// The "change location" view that replaces the popup's content: a search
-// field with merged suggestions from three geocoders, the GPS button, and a
-// way back to automatic (IP-based) location.
+// The "change location" view that replaces the popup's content: an empty
+// search field with the saved places (pinned, then recent) listed under it,
+// merged suggestions from three geocoders while typing, the GPS button, and
+// a way back to automatic (IP-based) location.
 Column {
   id: root
 
@@ -20,8 +21,15 @@ Column {
   readonly property var search: service.search
   readonly property bool saving: location.saveState !== "idle"
   readonly property var suggestions: search.suggestions
+  readonly property var places: service.places
+  readonly property bool queryEmpty: field.text.trim() === ""
+  // What the keyboard cursor walks: suggestions while typing, the saved
+  // places while the box is empty.
+  readonly property bool showingPlaces: queryEmpty && suggestions.length === 0 && places.length > 0
+  readonly property var choices: suggestions.length > 0 ? suggestions : (showingPlaces ? places : [])
   property int selectedIndex: 0
   property var selectedPlace: null
+  property var pendingPlace: null      // the search pick whose save is in flight
   property string hint: ""
 
   signal dismissed()
@@ -32,13 +40,12 @@ Column {
     hint = ""
     selectedIndex = 0
     selectedPlace = null
+    pendingPlace = null
     // Reset the query first: assigning the same text again would not fire
     // onQueryChanged, and the search would never run.
     search.query = ""
     search.clear()
-    field.text = location.configured.name
-    search.query = field.text
-    field.selectAll()
+    field.text = ""
     field.forceActiveFocus()
     location.probeGps()
   }
@@ -49,28 +56,34 @@ Column {
     hint = ""
   }
 
-  function pick(suggestion) {
-    if (!suggestion) return
-    location.persist(suggestion.name, suggestion.latitude, suggestion.longitude)
+  function pick(place) {
+    if (!place) return
+    pendingPlace = place
+    location.persist(place.name, place.latitude, place.longitude)
   }
 
   function commit() {
+    if (showingPlaces) { pick(choices[selectedIndex]); return }
     var choice = Model.locationCommit(field.text, suggestions, selectedIndex)
     if (choice === null) {
-      hint = search.running ? "Still searching…" : "Pick a match from the list"
+      hint = queryEmpty ? "Type a place to search" : (search.running ? "Still searching…" : "Pick a match from the list")
       return
     }
-    if (choice.name === "") { location.clear(); return }
     pick(choice)
   }
 
   // Keep the keyboard cursor on the same place while sources arrive.
-  onSuggestionsChanged: selectedIndex = Model.suggestionIndexFor(suggestions, selectedPlace, selectedIndex)
-  onSelectedIndexChanged: selectedPlace = suggestions[selectedIndex] || null
+  onChoicesChanged: selectedIndex = Model.suggestionIndexFor(choices, selectedPlace, selectedIndex)
+  onSelectedIndexChanged: selectedPlace = choices[selectedIndex] || null
 
   Connections {
     target: root.location
-    function onSaved() { root.dismissed() }
+    function onSaved() {
+      if (root.pendingPlace) root.service.rememberPlace(root.pendingPlace)
+      root.pendingPlace = null
+      root.dismissed()
+    }
+    function onSaveFailed() { root.pendingPlace = null }
   }
 
   // ---- Header: title, GPS button, close.
@@ -138,11 +151,16 @@ Column {
       foreground: root.foreground
       font.family: root.fontFamily
 
-      onTextChanged: { root.hint = ""; root.search.query = text }
+      onTextChanged: {
+        // A place name; anything longer is a paste, not a search.
+        if (text.length > Model.MAX_QUERY_CHARS) { text = text.slice(0, Model.MAX_QUERY_CHARS); return }
+        root.hint = ""
+        root.search.query = text
+      }
 
       Keys.onPressed: function(event) {
         if (event.key === Qt.Key_Escape) { root.dismissed(); event.accepted = true }
-        else if (event.key === Qt.Key_Down) { if (root.selectedIndex < root.suggestions.length - 1) root.selectedIndex++; event.accepted = true }
+        else if (event.key === Qt.Key_Down) { if (root.selectedIndex < root.choices.length - 1) root.selectedIndex++; event.accepted = true }
         else if (event.key === Qt.Key_Up) { if (root.selectedIndex > 0) root.selectedIndex--; event.accepted = true }
         else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) { if (!root.saving) root.commit(); event.accepted = true }
       }
@@ -169,16 +187,17 @@ Column {
       text: root.saving ? "Saving and fetching the forecast…"
         : (root.location.saveError !== "" ? root.location.saveError
         : (root.hint !== "" ? root.hint
+        : (root.showingPlaces ? "↑ ↓ to choose  ·  Enter to pick  ·  type to search"
         : (field.text.trim().length < 2 ? "Type at least two letters"
         : (root.suggestions.length === 0 ? (root.search.running ? "Searching…" : "No matches")
-        : "↑ ↓ to choose  ·  Enter to pick  ·  Esc to go back" + (root.search.running ? "  ·  searching…" : "")))))
+        : "↑ ↓ to choose  ·  Enter to pick  ·  Esc to go back" + (root.search.running ? "  ·  searching…" : ""))))))
       color: root.hint !== "" || root.location.saveError !== "" ? root.foreground : root.faded
       font.family: root.fontFamily
       font.pixelSize: Style.font.caption
     }
   }
 
-  // ---- Suggestions.
+  // ---- Suggestions while typing.
   Column {
     visible: !root.saving && root.suggestions.length > 0
     width: parent.width
@@ -187,51 +206,48 @@ Column {
     Repeater {
       model: root.suggestions
 
-      Rectangle {
+      PlaceRow {
         required property var modelData
         required property int index
         width: parent.width
-        height: row.implicitHeight + Style.space(14)
-        radius: Style.cornerRadius
-        color: index === root.selectedIndex ? Style.hoverFillFor(root.foreground, Color.accent) : "transparent"
+        name: modelData.name
+        description: modelData.description
+        selected: index === root.selectedIndex
+        foreground: root.foreground
+        fontFamily: root.fontFamily
+        gutter: root.gutter
+        onHovered: root.selectedIndex = index
+        onPicked: root.pick(modelData)
+      }
+    }
+  }
 
-        Row {
-          id: row
-          anchors.left: parent.left
-          anchors.right: parent.right
-          anchors.leftMargin: root.gutter
-          anchors.rightMargin: root.gutter
-          anchors.verticalCenter: parent.verticalCenter
-          spacing: Style.space(8)
+  // ---- Saved places while the box is empty: pinned first (filled pin),
+  //      then the latest searches (outlined pin).
+  Column {
+    visible: !root.saving && root.showingPlaces
+    width: parent.width
+    spacing: 0
 
-          Text {
-            id: nameText
-            textFormat: Text.PlainText
-            text: modelData.name
-            color: index === root.selectedIndex ? Style.hoverStateColor(root.foreground, Color.accent) : root.foreground
-            font.family: root.fontFamily
-            font.pixelSize: Style.font.body
-          }
-          Text {
-            textFormat: Text.PlainText
-            visible: text !== ""
-            width: Math.max(0, row.width - nameText.width - Style.space(8))
-            text: modelData.description
-            color: root.muted
-            font.family: root.fontFamily
-            font.pixelSize: Style.font.bodySmall
-            elide: Text.ElideRight
-            anchors.verticalCenter: parent.verticalCenter
-          }
-        }
+    Repeater {
+      model: root.showingPlaces ? root.places : []
 
-        MouseArea {
-          anchors.fill: parent
-          hoverEnabled: true
-          cursorShape: Qt.PointingHandCursor
-          onPositionChanged: root.selectedIndex = index
-          onClicked: root.pick(modelData)
-        }
+      PlaceRow {
+        required property var modelData
+        required property int index
+        width: parent.width
+        name: modelData.name
+        description: modelData.description
+        selected: index === root.selectedIndex
+        pinnable: true
+        pinned: modelData.pinned
+        canPin: root.service.canPin
+        foreground: root.foreground
+        fontFamily: root.fontFamily
+        gutter: root.gutter
+        onHovered: root.selectedIndex = index
+        onPicked: root.pick(modelData)
+        onPinToggled: root.service.togglePin(modelData)
       }
     }
   }

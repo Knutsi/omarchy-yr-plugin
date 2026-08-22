@@ -91,6 +91,26 @@ test("graphScale pads the temperature range and uses round ticks in every unit",
   assert.equal(Model.degreeSign("metric"), "°")
 })
 
+test("a broken temperature field cannot size the graph", () => {
+  // One out-of-range number used to drive ticksFor to 260 000 ticks (±1e7)
+  // or a RangeError (1e308) inside a QML binding. Such entries are dropped.
+  for (const bad of [1e7, -1e7, 1e308, -1e308, "NaN", "Infinity", 71, -101, null, "abc"]) {
+    assert.equal(Model.validTempC(bad), null, String(bad))
+    const entry = { time: "2026-08-22T10:00:00Z", data: { instant: { details: { air_temperature: bad } }, next_1_hours: { summary: { symbol_code: "fog" }, details: {} } } }
+    assert.equal(Model.currentCondition(entry), null, String(bad))
+    const doc = { properties: { timeseries: [entry] } }
+    assert.deepEqual(Model.hourlyForecast(doc, Date.parse(entry.time), 6), [], String(bad))
+    assert.deepEqual(Model.dailyForecast(doc, "2026-08-21"), [], String(bad))
+  }
+  assert.equal(Model.validTempC(-40), -40)
+  assert.equal(Model.validTempC("17.2"), 17.2)
+  assert.deepEqual(Model.ticksFor(-1e7, 1e7), [])
+  assert.deepEqual(Model.ticksFor(NaN, 10), [])
+  assert.ok(Model.ticksFor(-100, 70).length >= 2)
+  const scale = Model.graphScale([{ tempC: Model.TEMP_C_MIN, precipMm: 0 }, { tempC: Model.TEMP_C_MAX, precipMm: 0 }], "imperial")
+  assert.ok(isFinite(scale.tempMin) && isFinite(scale.tempMax) && scale.ticks.length >= 2 && scale.ticks.length <= 12)
+})
+
 test("MET requests: URL, User-Agent, If-Modified-Since, 4-decimal coordinates", () => {
   assert.equal(Model.roundCoord(59.912673812), 59.9127)
   assert.equal(Model.roundCoord(-33.86882), -33.8688)
@@ -125,13 +145,19 @@ test("parseCurlResponse handles 200, 304, redirects, 100-continue, 429 bodies, t
   assert.equal(notModified.body, "")
   assert.equal(Model.parseForecast(notModified.body), null)
 
-  const redirected = Model.parseCurlResponse("HTTP/1.1 301 Moved\r\nlocation: x\r\n\r\nHTTP/2 200 \r\nlast-modified: A\r\n\r\n{\"properties\":{\"timeseries\":[{\"time\":\"2026-01-01T00:00:00Z\"}]}}")
+  const redirected = Model.parseCurlResponse("HTTP/1.1 301 Moved\r\nlocation: x\r\n\r\nHTTP/2 200 \r\nlast-modified: Sat, 22 Aug 2026 08:00:00 GMT\r\n\r\n{\"properties\":{\"timeseries\":[{\"time\":\"2026-01-01T00:00:00Z\"}]}}")
   assert.equal(redirected.status, 200)
-  assert.equal(redirected.lastModified, "A")
+  assert.equal(redirected.lastModified, "Sat, 22 Aug 2026 08:00:00 GMT")
 
-  const cont = Model.parseCurlResponse("HTTP/1.1 100 Continue\r\n\r\nHTTP/1.1 200 OK\r\nLast-Modified: B\r\n\r\n{\"properties\":{\"timeseries\":[{\"time\":\"t\"}]}}")
+  const cont = Model.parseCurlResponse("HTTP/1.1 100 Continue\r\n\r\nHTTP/1.1 200 OK\r\nLast-Modified: Sun, 23 Aug 2026 09:00:00 GMT\r\n\r\n{\"properties\":{\"timeseries\":[{\"time\":\"t\"}]}}")
   assert.equal(cont.status, 200)
-  assert.equal(cont.lastModified, "B")
+  assert.equal(cont.lastModified, "Sun, 23 Aug 2026 09:00:00 GMT")
+
+  // The validator is echoed back as a request header, so only an HTTP date
+  // is kept: anything else from the server is dropped, not forwarded.
+  for (const bad of ["A", "<img src=x>", "Fri, 21 Aug 2026 19:19:53 GMT\tX-Injected: 1", "x".repeat(5000), "Fri, 21 Aug 2026 19:19:53 UTC"]) {
+    assert.equal(Model.parseCurlResponse("HTTP/2 200 \r\nlast-modified: " + bad + "\r\n\r\n{}").lastModified, "", JSON.stringify(bad.slice(0, 40)))
+  }
 
   const limited = Model.parseCurlResponse("HTTP/2 429 \r\ncontent-type: application/json\r\n\r\n{\"error\":\"too many\"}")
   assert.equal(limited.status, 429)

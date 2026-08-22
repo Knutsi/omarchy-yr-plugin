@@ -31,6 +31,7 @@ Item {
   // "idle" → "saving" (CLI running) → "fetching" (waiting for the forecast) → "idle"
   property string saveState: "idle"
   property string saveError: ""
+  property string pendingKey: ""       // coordinates of the save in flight
   signal saved()
   signal saveFailed(string reason)
 
@@ -157,10 +158,14 @@ Item {
   function persist(name, latitude, longitude) {
     if (saveRequest.running) return
     saveError = ""
+    var argv = name ? Model.persistCommand(name, latitude, longitude) : Model.clearLocationCommand()
+    if (!argv) {
+      saveError = "Cannot save this place: no usable name or coordinates"
+      saveFailed(saveError)
+      return
+    }
     saveState = "saving"
-    var argv = name && latitude !== null && longitude !== null
-      ? ["omarchy-weather-location", "--set", String(name), latitude + "," + longitude]
-      : ["omarchy-weather-location", "--clear"]
+    pendingKey = name ? Model.locationKey(latitude, longitude) : ""
     saveRequest.start(argv, name ? "set" : "clear")
   }
 
@@ -186,9 +191,16 @@ Item {
         root.saveFailed(root.saveError)
         return
       }
+      locationFile.reload()
+      // Same coordinates as before (re-picking the current place, or only the
+      // name changed): the key does not change, so no forecast is fetched and
+      // none would ever "arrive" — the save is complete as soon as it is written.
+      if (tag === "set" && root.pendingKey !== "" && root.pendingKey === root.key) {
+        root.markSaved()
+        return
+      }
       root.saveState = "fetching"
       saveWatchdog.restart()
-      locationFile.reload()
       if (tag === "clear") {
         root.configured = Model.emptyLocation()
         root.detect(true)

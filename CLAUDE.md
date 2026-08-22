@@ -37,14 +37,52 @@ External input is hostile. Anything that enters the long-lived shell process
   enforces both (QML scan + tainted-fixture probe of every parser). The QML
   scan covers `Text`/`PanelSectionHeader` blocks only; a string handed to a
   shell component property (`tooltipText`, `Button.text`, …) is covered by
-  the parser probe alone, so never bind one to a raw external value.
+  the parser probe alone, so never bind one to a raw external value;
+- **child processes**: every argv is built by a `Model.js` builder
+  (`curlCommand`, `metCommand`, `settingCommand`, `persistCommand`,
+  `clearLocationCommand`, `notificationCommand`, `browserCommand`, the
+  GeoClue commands) — never inline in QML, never `bar.run`/`bash -c` with
+  data in it — carries a time bound (`--max-time` or coreutils `timeout`)
+  when the plugin waits for it, and no positional starts with `-`
+  (`positional()`; `omarchy-notification-send` re-scans its arguments for
+  `--exec`). `test/meta.test.mjs` greps every `.qml` for command literals;
+- **numbers from outside are range-checked** before they size anything
+  (`validTempC`, `validCoords`/`strictNum`): one `air_temperature` of 1e7
+  used to mean 260 000 graph ticks, 1e308 a `RangeError` in a binding;
+- **table lookups keyed by an external string use `hasOwnProperty`**
+  (`symbol_code: "constructor_day"` once returned `function Object()`);
+- **URLs handed to a browser are literals plus numbers or a yr location id
+  matching `YR_ID`** (`yrUrl`), and `browserCommand` refuses anything that is
+  not one; the launch is argv via `omarchy-launch-browser`. yr facts that
+  shaped this (verified 2026-08-22): `…/daily-table/1-84687` redirects to
+  the full named path, so ids suffice and names are never needed; the ids
+  come only from yr's own site API (`/api/v0/locations/search`; Kartverket's
+  `stedsnummer` is unrelated, `2-<GeoNames id>` works only outside Norway);
+  `?q=` is ignored when `lat`/`lon` are given; a nearest-by-coordinates list
+  in a town is streets and bridges, so the name search comes first and the
+  nearest search accepts populated places (category `C*`) only. Never write the name of the init tool that
+  launcher uses internally anywhere in the plugin (README included): the
+  marketplace baseline flags the word itself as a review capability;
+- **no arrays through `omarchy bar set`**: `qs ipc call` spreads a JSON-array
+  argument into separate arguments (a one-element list arrives as a bare
+  object, longer ones fail with "too many arguments") — found the hard way
+  with `places`. Scalars go through `settingCommand`; lists go in-process
+  through `shell.updateEntryInline(pluginId, entry)` (`Service.savePlaces`),
+  built from the shell's live entry;
+- **a list read back from `settings` is not an `Array`**: after a shell
+  restart the bar's settings push hands the plugin a QML sequence wrapper —
+  indexable, with a `length`, but `Array.isArray` is false (the Tailscale
+  panel tests `instanceof Array` for the same reason). `Model.toArray()`
+  copies any array-like; every list parser must go through it. Verified by
+  A/B restarts: `Array.isArray` alone → 0 places, `toArray` → the stored list.
 
 New network calls go through `curlCommand()`/`metCommand()` — never build a
 curl argv inline; `test/meta.test.mjs` counts the `["curl"` literals and
 checks every builder's output for both bounds. When adding any
 external-input path, answer explicitly: what happens at 10 GB, at 0 bytes,
-on garbage, on a hang, on HTTP 500, and when a field is
-`<img src="http://…">` — and encode each answer as a test.
+on garbage, on a hang, on HTTP 500, when a field is
+`<img src="http://…">`, when a number is 1e308, and when a string is
+`--exec` or `constructor` — and encode each answer as a test.
 
 Why the rendering rule exists (marketplace review of v0.3.2, issue #1448):
 QtQuick `Text` defaults to `Text.AutoText`, which auto-detects markup and

@@ -156,6 +156,7 @@ Panel {
               gutter: root.gutter
               onUnitTapped: root.service.toggleUnit()
               onLocationTapped: root.startEditing()
+              onSiteTapped: root.service.openSite()
             }
 
             // Warnings (farevarsel)

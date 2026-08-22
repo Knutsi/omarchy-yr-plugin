@@ -1,4 +1,5 @@
 import QtQuick
+import Quickshell
 import qs.Commons
 import qs.Ui
 import "Model.js" as Model
@@ -66,13 +67,11 @@ BarWidget {
   function togglePanel() { if (panelLoader.item && panelLoader.item.toggle) panelLoader.item.toggle() }
 
   function notify() {
-    if (!root.bar || !weather) return
-    var headline = (service.location.displayName ? service.location.displayName + "  " : "") + weather.temperatureText
+    if (!weather) return
+    var headline = Model.notificationHeadline(service.location.displayName, weather.temperatureText)
     var details = [weather.conditionText, weather.windText ? "Wind " + weather.windText : "", weather.humidityText ? "Humidity " + weather.humidityText : ""]
       .filter(function(part) { return part !== "" }).join("  ·  ")
-    if (headline.replace(/\s/g, "") === "") headline = "Weather unavailable"
-    root.bar.run("omarchy-notification-send -g " + Util.shellQuote(root.glyph || "")
-      + " " + Util.shellQuote(headline) + " " + Util.shellQuote(details))
+    Quickshell.execDetached(Model.notificationCommand(root.glyph || "", headline, details))
   }
 
   // Shape contract for shell.summon/hide/toggle routing (Bar.findPanelWidget

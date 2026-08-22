@@ -1,0 +1,333 @@
+{
+ "totalResults": 20,
+ "_embedded": {
+  "location": [
+   {
+    "category": {
+     "id": "CB09",
+     "name": "City – large town"
+    },
+    "id": "1-72837",
+    "name": "Oslo",
+    "position": {
+     "lat": 59.91272,
+     "lon": 10.74609
+    },
+    "elevation": 10,
+    "coastalPoint": {
+     "lat": 59.90213,
+     "lon": 10.72852
+    },
+    "timeZone": "Europe/Oslo",
+    "urlPath": "Norway/Oslo/Oslo/Oslo",
+    "country": {
+     "id": "NO",
+     "name": "Norway"
+    },
+    "region": {
+     "id": "NO/03",
+     "name": "Oslo"
+    },
+    "subregion": {
+     "id": "NO/03/0301",
+     "name": "Oslo"
+    },
+    "isInOcean": false,
+    "hasOceanForecast": true
+   },
+   {
+    "category": {
+     "id": "KC02",
+     "name": "Road"
+    },
+    "id": "11-4155",
+    "name": "Stortorvet",
+    "position": {
+     "lat": 59.91262,
+     "lon": 10.74624
+    },
+    "elevation": 11,
+    "coastalPoint": {
+     "lat": 59.90213,
+     "lon": 10.72852
+    },
+    "timeZone": "Europe/Oslo",
+    "urlPath": "Norway/Oslo/Oslo/Stortorvet",
+    "country": {
+     "id": "NO",
+     "name": "Norway"
+    },
+    "region": {
+     "id": "NO/03",
+     "name": "Oslo"
+    },
+    "subregion": {
+     "id": "NO/03/0301",
+     "name": "Oslo"
+    },
+    "isInOcean": false,
+    "hasOceanForecast": true
+   },
+   {
+    "category": {
+     "id": "KC02",
+     "name": "Road"
+    },
+    "id": "10-996288",
+    "name": "Kirkeristen",
+    "position": {
+     "lat": 59.91289,
+     "lon": 10.74733
+    },
+    "elevation": 8,
+    "coastalPoint": {
+     "lat": 59.90213,
+     "lon": 10.72852
+    },
+    "timeZone": "Europe/Oslo",
+    "urlPath": "Norway/Oslo/Oslo/Kirkeristen",
+    "country": {
+     "id": "NO",
+     "name": "Norway"
+    },
+    "region": {
+     "id": "NO/03",
+     "name": "Oslo"
+    },
+    "subregion": {
+     "id": "NO/03/0301",
+     "name": "Oslo"
+    },
+    "isInOcean": false,
+    "hasOceanForecast": true
+   },
+   {
+    "category": {
+     "id": "KC02",
+     "name": "Road"
+    },
+    "id": "10-997938",
+    "name": "Linaaes gate",
+    "position": {
+     "lat": 59.91357,
+     "lon": 10.74603
+    },
+    "elevation": 11,
+    "coastalPoint": {
+     "lat": 59.90213,
+     "lon": 10.72852
+    },
+    "timeZone": "Europe/Oslo",
+    "urlPath": "Norway/Oslo/Oslo/Linaaes gate",
+    "country": {
+     "id": "NO",
+     "name": "Norway"
+    },
+    "region": {
+     "id": "NO/03",
+     "name": "Oslo"
+    },
+    "subregion": {
+     "id": "NO/03/0301",
+     "name": "Oslo"
+    },
+    "isInOcean": false,
+    "hasOceanForecast": true
+   },
+   {
+    "category": {
+     "id": "CK01",
+     "name": "Populated place"
+    },
+    "id": "2-11722356",
+    "name": "Basarhallene",
+    "position": {
+     "lat": 59.9123,
+     "lon": 10.74769
+    },
+    "elevation": 9,
+    "coastalPoint": {
+     "lat": 59.90213,
+     "lon": 10.72852
+    },
+    "timeZone": "Europe/Oslo",
+    "urlPath": "Norway/Oslo/Basarhallene",
+    "country": {
+     "id": "NO",
+     "name": "Norway"
+    },
+    "region": {
+     "id": "NO/03",
+     "name": "Oslo"
+    },
+    "isInOcean": false,
+    "hasOceanForecast": true
+   },
+   {
+    "category": {
+     "id": "EP01",
+     "name": "Commercial building"
+    },
+    "id": "1-2256505",
+    "name": "Basarhallene",
+    "position": {
+     "lat": 59.9123,
+     "lon": 10.74769
+    },
+    "elevation": 9,
+    "coastalPoint": {
+     "lat": 59.90213,
+     "lon": 10.72852
+    },
+    "timeZone": "Europe/Oslo",
+    "urlPath": "Norway/Oslo/Oslo/Basarhallene",
+    "country": {
+     "id": "NO",
+     "name": "Norway"
+    },
+    "region": {
+     "id": "NO/03",
+     "name": "Oslo"
+    },
+    "subregion": {
+     "id": "NO/03/0301",
+     "name": "Oslo"
+    },
+    "isInOcean": false,
+    "hasOceanForecast": true
+   },
+   {
+    "category": {
+     "id": "KC01",
+     "name": "Street"
+    },
+    "id": "2-11722309",
+    "name": "Biskop Gunnerus’ Gate",
+    "position": {
+     "lat": 59.9124,
+     "lon": 10.74843
+    },
+    "elevation": 5,
+    "coastalPoint": {
+     "lat": 59.90213,
+     "lon": 10.72852
+    },
+    "timeZone": "Europe/Oslo",
+    "urlPath": "Norway/Oslo/Oslo/Biskop Gunnerus’ Gate",
+    "country": {
+     "id": "NO",
+     "name": "Norway"
+    },
+    "region": {
+     "id": "NO/03",
+     "name": "Oslo"
+    },
+    "subregion": {
+     "id": "NO/03/0301",
+     "name": "Oslo"
+    },
+    "isInOcean": false,
+    "hasOceanForecast": true
+   },
+   {
+    "category": {
+     "id": "KC02",
+     "name": "Road"
+    },
+    "id": "10-997313",
+    "name": "Skråninga",
+    "position": {
+     "lat": 59.91418,
+     "lon": 10.74706
+    },
+    "elevation": 11,
+    "coastalPoint": {
+     "lat": 59.90213,
+     "lon": 10.72852
+    },
+    "timeZone": "Europe/Oslo",
+    "urlPath": "Norway/Oslo/Oslo/Skråninga",
+    "country": {
+     "id": "NO",
+     "name": "Norway"
+    },
+    "region": {
+     "id": "NO/03",
+     "name": "Oslo"
+    },
+    "subregion": {
+     "id": "NO/03/0301",
+     "name": "Oslo"
+    },
+    "isInOcean": false,
+    "hasOceanForecast": true
+   },
+   {
+    "category": {
+     "id": "ED11",
+     "name": "School"
+    },
+    "id": "2-11844217",
+    "name": "Noroff Videregående Skole",
+    "position": {
+     "lat": 59.91423,
+     "lon": 10.74735
+    },
+    "elevation": 10,
+    "coastalPoint": {
+     "lat": 59.90213,
+     "lon": 10.72852
+    },
+    "timeZone": "Europe/Oslo",
+    "urlPath": "Norway/Oslo/Oslo/Noroff Videregående Skole",
+    "country": {
+     "id": "NO",
+     "name": "Norway"
+    },
+    "region": {
+     "id": "NO/03",
+     "name": "Oslo"
+    },
+    "subregion": {
+     "id": "NO/03/0301",
+     "name": "Oslo"
+    },
+    "isInOcean": false,
+    "hasOceanForecast": true
+   },
+   {
+    "category": {
+     "id": "KE21",
+     "name": "Railway station"
+    },
+    "id": "11-4029",
+    "name": "Stortinget",
+    "position": {
+     "lat": 59.91344,
+     "lon": 10.74326
+    },
+    "elevation": 14,
+    "coastalPoint": {
+     "lat": 59.90213,
+     "lon": 10.72852
+    },
+    "timeZone": "Europe/Oslo",
+    "urlPath": "Norway/Oslo/Oslo/Stortinget",
+    "country": {
+     "id": "NO",
+     "name": "Norway"
+    },
+    "region": {
+     "id": "NO/03",
+     "name": "Oslo"
+    },
+    "subregion": {
+     "id": "NO/03/0301",
+     "name": "Oslo"
+    },
+    "isInOcean": false,
+    "hasOceanForecast": true
+   }
+  ]
+ }
+}

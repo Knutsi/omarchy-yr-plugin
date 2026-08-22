@@ -1,4 +1,5 @@
 import QtQuick
+import Quickshell
 import Quickshell.Io
 import "Model.js" as Model
 
@@ -43,9 +44,7 @@ Item {
   property var settingsQueue: []
 
   function setSetting(key, value, asJson) {
-    var argv = ["omarchy", "bar", "set", pluginId, key, String(value)]
-    if (asJson) argv.push("--json")
-    settingsQueue = settingsQueue.concat([{ key: key, argv: argv }])
+    settingsQueue = settingsQueue.concat([{ key: key, argv: Model.settingCommand(pluginId, key, value, asJson) }])
     pumpSettings()
   }
 
@@ -59,6 +58,106 @@ Item {
   function setUnit(name) { setSetting("unit", Model.unitSystem(name), false) }
   function toggleUnit() { setUnit(Model.nextUnit(weatherService.unit)) }
   function setTextForecast(enabled) { setSetting("textForecast", enabled ? "true" : "false", true) }
+
+  // ---- Saved places (pinned favourites + the latest searches) live on the
+  //      same entry, as an undeclared `places` key, and are read back from
+  //      `settings` like everything else. They cannot be written through
+  //      `omarchy bar set`: `qs ipc` spreads a JSON-array argument into
+  //      separate arguments, so a one-place list arrives as a bare object and
+  //      a longer one as "too many arguments". The list is written in-process
+  //      instead, through the shell's own entry writer, the way Omarchy's
+  //      widgets keep their own small state.
+  readonly property var places: Model.parsePlaces(settings.places)
+  readonly property bool canPin: Model.canPin(places)
+
+  function currentEntry() {
+    var config = shell && shell.shellConfig ? shell.shellConfig : null
+    var layout = config && config.bar && config.bar.layout ? config.bar.layout : {}
+    var sections = ["left", "center", "right"]
+    for (var s = 0; s < sections.length; s++) {
+      var arr = layout[sections[s]] || []
+      for (var i = 0; i < arr.length; i++) if (arr[i] && String(arr[i].id || "").indexOf(pluginId) === 0) return arr[i]
+    }
+    return null
+  }
+
+  function savePlaces(list) {
+    if (!shell || typeof shell.updateEntryInline !== "function") {
+      settingsError = "Could not save places (shell API missing)"
+      return
+    }
+    // Start from the shell's live entry, not our last settings snapshot, so a
+    // setting written a moment ago is carried forward rather than clobbered.
+    var base = currentEntry() || settings
+    var entry = { id: pluginId }
+    for (var key in base) if (key !== "id") entry[key] = base[key]
+    entry.places = list
+    shell.updateEntryInline(pluginId, entry)
+    settingsError = ""
+  }
+  function rememberPlace(place) { savePlaces(Model.rememberPlace(places, place)) }
+  function togglePin(place) { savePlaces(Model.togglePin(places, place)) }
+
+  // ---- The same forecast on yr.no, for the location in use: the place's
+  //      own page when yr's register knows it (found by the name in use,
+  //      then by the nearest town), the coordinate page otherwise. The URL
+  //      is literals plus a validated id or two numbers, launched as argv
+  //      (no shell). Lookups are bounded by curl's timeout and cached per
+  //      location for the session; a failure just means coordinates.
+  property var siteCache: ({})
+  property bool siteBusy: false
+  property var sitePending: null     // the click being resolved: { latitude, longitude, name, cacheKey }
+
+  function openSite() {
+    if (!locationService.hasLocation) return
+    var loc = locationService.effective
+    var pending = { latitude: loc.latitude, longitude: loc.longitude, name: locationService.displayName }
+    pending.cacheKey = locationService.key + "|" + pending.name
+    if (siteCache[pending.cacheKey] !== undefined) { launchSite(pending, siteCache[pending.cacheKey]); return }
+    if (siteBusy) return
+    // Build the request before flipping the busy flag, so nothing can leave
+    // the globe stuck on its spinner.
+    var byName = Model.yrSearchCommand(pending.name)
+    sitePending = pending
+    siteBusy = true
+    if (byName) siteRequest.start(byName, "name")
+    else startNearbySite()
+  }
+
+  function startNearbySite() {
+    var cmd = Model.yrNearbyCommand(sitePending.latitude, sitePending.longitude)
+    if (cmd) siteRequest.start(cmd, "nearby")
+    else finishSite("")
+  }
+
+  function finishSite(id) {
+    var pending = sitePending
+    sitePending = null
+    siteBusy = false
+    if (!pending) return
+    var cache = siteCache
+    cache[pending.cacheKey] = id
+    siteCache = cache
+    launchSite(pending, id)
+  }
+
+  function launchSite(pending, id) {
+    var cmd = Model.browserCommand(Model.yrUrl(pending.latitude, pending.longitude, Qt.locale().name, id))
+    if (cmd) Quickshell.execDetached(cmd)
+  }
+
+  CurlRequest {
+    id: siteRequest
+    onFinished: function(tag, stdout, exitCode) {
+      var pending = root.sitePending
+      if (!pending) return
+      var id = exitCode === 0
+        ? Model.pickYrLocation(Model.parseYrLocations(stdout), pending.latitude, pending.longitude, tag === "name" ? pending.name : "")
+        : ""
+      if (id === "" && tag === "name") { root.startNearbySite(); return }
+      root.finishSite(id)
+    }
+  }
 
   CurlRequest {
     id: settingsRequest
@@ -96,6 +195,8 @@ Item {
         textArea: weatherService.textArea,
         unit: weatherService.unit,
         textForecast: weatherService.textForecastEnabled,
+        places: root.places.length,
+        siteBusy: root.siteBusy,
         pendingSettings: root.settingsQueue.length,
         settingsError: root.settingsError
       })

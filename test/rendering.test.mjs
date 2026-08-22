@@ -45,7 +45,7 @@ test("every Text and PanelSectionHeader in plugin QML is textFormat: Text.PlainT
 
 // Built from char codes so no raw control byte sits in this source file.
 const chr = String.fromCharCode
-const NUL = chr(0), ESC = chr(27), NEL = chr(0x85)
+const NUL = chr(0), ESC = chr(27), NEL = chr(0x85), LONE = chr(0xD800)
 const CONTROL_CLASS = [[0, 8], [11, 31], [127, 159]].map(([a, b]) => chr(a) + "-" + chr(b)).join("")
 const DIRTY = new RegExp("[<>" + CONTROL_CLASS + "]")
 
@@ -56,18 +56,20 @@ const PAYLOADS = [
   '<img src="http://203.0.113.1/x.png" width="99999" height="99999">',
   '<a href="file:///etc/passwd">see</a>',
   "<!DOCTYPE html><b>bold</b>",
-  NUL + ESC + "[31m" + NEL
+  NUL + ESC + "[31m" + NEL,
+  LONE + "x" + chr(0xDFFF)      // unpaired surrogates: encodeURIComponent throws on them
 ]
 
-// Every string in the body is tainted except GeoJSON's structural "type"
-// ("Feature", "Polygon"), which is matched, never shown — tainting it would
-// make the parser drop every feature and the probe check nothing.
+// Every string in the body is tainted except the structural keys that are
+// matched, never shown: GeoJSON's "type" ("Feature", "Polygon") and "id"
+// (yr location ids must match ^[0-9]{1,2}-[0-9]{1,10}$) — tainting those
+// would make the parser drop every row and the probe check nothing.
 function taint(value, payload) {
   if (typeof value === "string") return payload + value + payload
   if (Array.isArray(value)) return value.map(v => taint(v, payload))
   if (value && typeof value === "object") {
     const out = {}
-    for (const key of Object.keys(value)) out[key] = key === "type" ? value[key] : taint(value[key], payload)
+    for (const key of Object.keys(value)) out[key] = key === "type" || key === "id" ? value[key] : taint(value[key], payload)
     return out
   }
   return value
@@ -101,7 +103,9 @@ test("no parser lets markup or control characters through to a rendered string",
     ["parsePhotonReverse", "photon-reverse.json", raw => Model.parsePhotonReverse(raw), r => r && r.name.length > 0],
     ["parseKartverketPoint", "kartverket-punkt.json", raw => Model.parseKartverketPoint(raw), r => r.length > 0],
     ["parseIpLocation", JSON.stringify(ipBody), raw => Model.parseIpLocation(raw), r => r.latitude !== null],
-    ["parseLocationFile", JSON.stringify(weatherJson), raw => Model.parseLocationFile(raw), r => r.latitude !== null]
+    ["parseLocationFile", JSON.stringify(weatherJson), raw => Model.parseLocationFile(raw), r => r.latitude !== null],
+    ["parsePlaces", JSON.stringify([{ name: "Oslo", description: "Oslo, Norway", latitude: 59.91, longitude: 10.75, pinned: true }]), raw => Model.parsePlaces(raw), r => r.length === 1],
+    ["parseYrLocations", "yr-search-honefoss.json", raw => Model.parseYrLocations(raw), r => r.length >= 1]
   ]
   for (const [label, body, parse, populated] of probes) {
     const clean = body.endsWith(".json") ? fixture(body) : body
@@ -110,6 +114,11 @@ test("no parser lets markup or control characters through to a rendered string",
       assert.ok(populated(result), `${label}: tainted body was rejected outright, so nothing was checked`)
       assertClean(result, label)
     }
+  }
+
+  // GeoClue's stdout is a process, not HTTP, but the same rule applies.
+  for (const payload of PAYLOADS) {
+    assertClean(Model.parseWhereAmI("Latitude: 1°\nLongitude: 2°\nAccuracy: 5 meters\nDescription: " + payload + "\n"), "parseWhereAmI")
   }
 
   // The text-forecast override comes from settings and lands in the same header.
@@ -138,6 +147,10 @@ test("plainText: strips angle brackets and control bytes, bounds length, keeps r
   const warning = "Kraftige vindkast, opp mot 25 m/s.\nSikre løse gjenstander – æøå ÆØÅ.\tTab beholdes."
   assert.equal(Model.plainText(warning), warning)
   assert.equal(Model.plainText("&lt;not-a-tag&gt; &amp;"), "&lt;not-a-tag&gt; &amp;", "entities are harmless without a tag and stay literal")
+  assert.equal(Model.plainText("a" + LONE + "b" + chr(0xDFFF) + "c"), "abc", "unpaired surrogates dropped")
+  assert.equal(Model.plainText("😀 Ålesund"), "😀 Ålesund", "a real pair survives")
+  assert.doesNotThrow(() => encodeURIComponent(Model.plainText(LONE + "Oslo")))
+  assert.ok(Model.yrSearchCommand(LONE + "Oslo"), "a stored name with a lone surrogate still becomes a request")
 })
 
 test("every parser that yields a rendered string calls plainText (chokepoint count)", () => {
@@ -146,5 +159,5 @@ test("every parser that yields a rendered string calls plainText (chokepoint cou
   // was added, wrap its strings and raise the floor.
   const source = readFileSync(new URL("../Model.js", import.meta.url), "utf8")
   const calls = (source.match(/\bplainText\(/g) || []).length
-  assert.ok(calls >= 22, `plainText( appears ${calls} times in Model.js; expected at least 22`)
+  assert.ok(calls >= 27, `plainText( appears ${calls} times in Model.js; expected at least 27`)
 })

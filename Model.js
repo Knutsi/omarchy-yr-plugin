@@ -38,6 +38,10 @@ var TIMEOUT_TEXT_S = 15         // textforecast/metalerts bodies are larger
 var RETRY_LIMIT = 3
 var RETRY_DELAY_MS = 2500
 var TEXTFORECAST_INTERVAL_MS = 3 * 3600 * 1000
+var CHILD_TIMEOUT_S = 10        // omarchy CLI helpers and the GeoClue probe
+var MAX_QUERY_CHARS = 100       // a place name; anything longer is not a search
+var MAX_PINNED = 5              // saved places: favourites …
+var MAX_RECENT = 5              // … and the latest searches
 
 // Response size ceilings (bytes). Real bodies are ~1–10 KB for the lookup
 // services and ~30–300 KB for MET, so both caps sit an order of magnitude
@@ -71,6 +75,8 @@ function plainText(value) {
   return String(value === undefined || value === null ? "" : value)
     .replace(/[<>]/g, "")
     .replace(/[\u0000-\u0008\u000B-\u001F\u007F-\u009F]/g, "")
+    // An unpaired surrogate is not text, and encodeURIComponent throws on it.
+    .replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]|[\uD800-\uDFFF]/g, function(m) { return m.length === 2 ? m : "" })
     .slice(0, MAX_TEXT_CHARS)
 }
 
@@ -204,6 +210,7 @@ function dayName(dateString, formatter) {
 // it once and stores the coordinates.
 function parseLocationFile(raw) {
   var unset = { name: "", latitude: null, longitude: null }
+  if (responseTooLarge(raw, MAX_BYTES_LOOKUP)) return unset
   try {
     var data = JSON.parse(String(raw || ""))
     if (!data || typeof data !== "object") return unset
@@ -264,6 +271,36 @@ function roundCoord(value) {
   return Math.round(n * 10000) / 10000
 }
 
+// A number, or a string that is nothing but a number — parseFloat would
+// happily take the 59.9 out of "59.9<img src=x>".
+function strictNum(value) {
+  if (typeof value === "number") return isFinite(value) ? value : null
+  return /^\s*-?[0-9]+(\.[0-9]+)?\s*$/.test(String(value === undefined || value === null ? "" : value)) ? parseFloat(value) : null
+}
+
+// Both coordinates rounded and on the globe, or null. Everything that turns
+// a position into a URL or a command argument goes through here.
+function validCoords(latitude, longitude) {
+  var lat = roundCoord(strictNum(latitude)), lon = roundCoord(strictNum(longitude))
+  if (lat === null || lon === null || lat < -90 || lat > 90 || lon < -180 || lon > 180) return null
+  return { latitude: lat, longitude: lon }
+}
+
+// Fixed decimals: omarchy-weather-location's coordinate pattern has no
+// exponent form, and JS prints 0.00001 as "1e-5".
+function formatCoord(value) {
+  return value.toFixed(4)
+}
+
+// A temperature outside what the atmosphere produces is a broken field, not
+// a forecast. One such number would otherwise size the graph's tick loop
+// (±1e7 → 260 000 ticks per paint; 1e308 → RangeError in a binding).
+var TEMP_C_MIN = -100, TEMP_C_MAX = 70
+function validTempC(value) {
+  var n = num(value)
+  return n === null || n < TEMP_C_MIN || n > TEMP_C_MAX ? null : n
+}
+
 // "59.9127,10.7461" — identity of a position for request tagging.
 function locationKey(latitude, longitude) {
   var lat = roundCoord(latitude), lon = roundCoord(longitude)
@@ -290,7 +327,7 @@ var SUGGESTION_LIMIT = 8
 // minimum); the fuzzier sources from three so a single keystroke never fans
 // out to three services.
 function geocodeRequests(query) {
-  var q = String(query || "").replace(/^\s+|\s+$/g, "")
+  var q = String(query || "").replace(/^\s+|\s+$/g, "").slice(0, MAX_QUERY_CHARS)
   var out = []
   if (q.length < 2) return out
   out.push({ source: "open-meteo", command: curlCommand(
@@ -445,13 +482,116 @@ function suggestionIndexFor(suggestions, selected, fallbackIndex) {
 
 // The selected suggestion, or null when nothing matched — a bare name must
 // never be saved without coordinates (the forecast would silently come from
-// the IP-detected location instead). An empty text means "back to auto".
+// the IP-detected location instead). An empty box commits nothing: the way
+// back to automatic location is its own button, so a stray Enter in the
+// (empty by default) search box cannot clear a saved place.
 function locationCommit(text, suggestions, selectedIndex) {
   var name = String(text || "").replace(/^\s+|\s+$/g, "")
-  if (name === "") return emptyLocation()
+  if (name === "") return null
   var choices = suggestions || []
   if (!choices.length) return null
   return choices[suggestionIndexFor(choices, null, selectedIndex)] || null
+}
+
+// ---------------------------------------------------------------------------
+// Saved places: pinned favourites and the latest searches, kept as the
+// `places` array on the widget's shell.json entry (the same file the shell
+// keeps the unit in; undeclared keys ride along beside the declared
+// settings, as Omarchy's own widgets do). The user can edit that file, so it
+// is parsed like any other outside input.
+// ---------------------------------------------------------------------------
+
+function placeRecord(row, pinned) {
+  if (!row || typeof row !== "object") return null
+  var coords = validCoords(row.latitude, row.longitude)
+  var name = plainText(row.name).replace(/^\s+|\s+$/g, "")
+  if (!coords || name === "") return null
+  return { name: name, description: plainText(row.description).replace(/^\s+|\s+$/g, ""),
+           latitude: coords.latitude, longitude: coords.longitude, pinned: pinned === true }
+}
+
+function containsPlace(list, place) {
+  for (var i = 0; i < list.length; i++) if (samePlace(list[i], place)) return true
+  return false
+}
+
+function pinnedCount(places) {
+  var n = 0
+  for (var i = 0; i < places.length; i++) if (places[i].pinned) n++
+  return n
+}
+
+// Pinned first (at most MAX_PINNED, in stored order), then the latest
+// searches (at most MAX_RECENT, newest first); duplicates and garbage dropped.
+// A list that crossed QML's C++ boundary (the bar's settings push) can come
+// back as a sequence wrapper: indexable, with a length, but not an Array.
+function toArray(value) {
+  if (Array.isArray(value)) return value
+  if (value && typeof value === "object" && typeof value.length === "number" && isFinite(value.length)) {
+    var out = []
+    for (var i = 0; i < value.length && i < 1000; i++) out.push(value[i])
+    return out
+  }
+  return null
+}
+
+function parsePlaces(value) {
+  var rows = value
+  if (typeof rows === "string") {
+    try { rows = JSON.parse(rows) } catch (e) { return [] }
+  }
+  rows = toArray(rows)
+  if (!rows) return []
+  var pinned = [], recent = []
+  for (var i = 0; i < rows.length && i < 100; i++) {
+    var row = rows[i]
+    if (!row || typeof row !== "object" || row.pinned !== true) continue
+    var place = placeRecord(row, true)
+    if (place && pinned.length < MAX_PINNED && !containsPlace(pinned, place)) pinned.push(place)
+  }
+  for (var j = 0; j < rows.length && j < 100; j++) {
+    var candidate = placeRecord(rows[j], false)
+    if (!candidate || (rows[j] && rows[j].pinned === true)) continue
+    if (recent.length < MAX_RECENT && !containsPlace(pinned, candidate) && !containsPlace(recent, candidate)) recent.push(candidate)
+  }
+  return pinned.concat(recent)
+}
+
+// The list with `row` as the newest recent (a pinned match leaves the list
+// as it is; an older copy moves to the front).
+function rememberPlace(places, row) {
+  var current = parsePlaces(places)
+  var place = placeRecord(row, false)
+  if (!place || containsPlace(current.filter(function(p) { return p.pinned }), place)) return current
+  var pinned = [], recent = [place]
+  for (var i = 0; i < current.length; i++) {
+    if (current[i].pinned) pinned.push(current[i])
+    else if (!samePlace(current[i], place) && recent.length < MAX_RECENT) recent.push(current[i])
+  }
+  return pinned.concat(recent)
+}
+
+function canPin(places) {
+  return pinnedCount(parsePlaces(places)) < MAX_PINNED
+}
+
+// Flip the pin on the row matching `row`. Pinning beyond MAX_PINNED returns
+// the list unchanged; unpinning makes the place the newest recent.
+function togglePin(places, row) {
+  var current = parsePlaces(places)
+  var target = placeRecord(row, false)
+  if (!target) return current
+  var index = -1
+  for (var i = 0; i < current.length; i++) if (samePlace(current[i], target)) { index = i; break }
+  if (index === -1) return current
+  var place = current[index]
+  var rest = current.slice(0, index).concat(current.slice(index + 1))
+  if (place.pinned) return rememberPlace(rest, place)
+  if (pinnedCount(rest) >= MAX_PINNED) return current
+  var pinned = [], recent = []
+  for (var k = 0; k < rest.length; k++) (rest[k].pinned ? pinned : recent).push(rest[k])
+  pinned.push(placeRecord(place, true))
+  return pinned.concat(recent)
 }
 
 // ---- Reverse lookup (coordinates → a display name) for GPS fixes.
@@ -503,6 +643,169 @@ function parseKartverketPoint(raw) {
 }
 
 // ---------------------------------------------------------------------------
+// Child processes other than curl. Every argv is built here — never inline
+// in QML, never through a shell — wrapped in coreutils `timeout` where the
+// plugin waits for the result, and a positional never starts with "-" so no
+// helper can read a place name or a forecast string as one of its options
+// (omarchy-notification-send, for one, re-scans its arguments for --exec).
+// ---------------------------------------------------------------------------
+
+function positional(value) {
+  return plainText(value).replace(/^[\s-]+/, "")
+}
+
+// omarchy bar set <id> <key> <value> [--json] — the widget's shell.json entry.
+function settingCommand(pluginId, key, value, asJson) {
+  var argv = ["timeout", String(CHILD_TIMEOUT_S), "omarchy", "bar", "set", String(pluginId), String(key), String(value)]
+  if (asJson) argv.push("--json")
+  return argv
+}
+
+// omarchy-weather-location --set <name> <lat,lon>, or null when the place
+// could not be saved as typed (no name, or coordinates off the globe).
+function persistCommand(name, latitude, longitude) {
+  var coords = validCoords(latitude, longitude)
+  var label = positional(name)
+  if (!coords || label === "") return null
+  return ["timeout", String(CHILD_TIMEOUT_S), "omarchy-weather-location", "--set", label,
+          formatCoord(coords.latitude) + "," + formatCoord(coords.longitude)]
+}
+
+function clearLocationCommand() {
+  return ["timeout", String(CHILD_TIMEOUT_S), "omarchy-weather-location", "--clear"]
+}
+
+// "Oslo  -5°C" — always led by a name (or "Weather"), never by the
+// temperature: positional() would take the minus sign for an option dash.
+function notificationHeadline(name, temperatureText) {
+  return [plainText(name).replace(/^\s+|\s+$/g, "") || "Weather", plainText(temperatureText)].filter(function(p) { return p !== "" }).join("  ")
+}
+
+// omarchy-notification-send -g <glyph> <headline> [description]
+function notificationCommand(glyph, headline, details) {
+  var head = positional(headline)
+  return ["omarchy-notification-send", "-g", String(glyph || ""), head === "" ? "Weather unavailable" : head, positional(details)]
+}
+
+// ---- The same forecast on yr.no. The URL is two numbers and literals —
+//      nothing from outside can enter it — and browserCommand opens nothing
+//      that is not such a URL. Launched as argv through Omarchy's own
+//      browser launcher, so no shell ever sees it.
+var YR_SITE = "https://www.yr.no/"
+var YR_PATHS = {
+  nb: "nb/v%C3%A6rvarsel/daglig-tabell/",
+  nn: "nn/v%C3%AArvarsel/dagleg-tabell/",
+  en: "en/forecast/daily-table/"
+}
+
+function yrLanguage(localeName) {
+  var name = String(localeName || "")
+  if (/^nn([_-]|$)/i.test(name)) return "nn"
+  if (/^(nb|no)([_-]|$)/i.test(name)) return "nb"
+  return "en"
+}
+
+// With a yr location id the page is the place's own (yr redirects
+// ".../daily-table/1-84687" to its full named path); without one, or with
+// anything that is not exactly an id, the coordinate page.
+function yrUrl(latitude, longitude, localeName, id) {
+  var coords = validCoords(latitude, longitude)
+  if (!coords) return ""
+  var target = YR_ID.test(String(id === undefined || id === null ? "" : id)) ? String(id) : coords.latitude + "," + coords.longitude
+  return YR_SITE + YR_PATHS[yrLanguage(localeName)] + target
+}
+
+function browserCommand(url) {
+  var target = String(url || "")
+  if (target.indexOf(YR_SITE) !== 0 || /[^A-Za-z0-9%\/.,\-]/.test(target.slice(YR_SITE.length))) return null
+  return ["omarchy-launch-browser", target]
+}
+
+// ---- yr's own location register, so the globe can open the place's page
+//      rather than a bare-coordinate one. This is the site's own API (what
+//      yr.no's pages call), not a published one: anything unexpected —
+//      a changed shape, an error, a timeout — means the coordinate page.
+//      Two lookups: by the place name in use (never the typed search text),
+//      then by the same rounded coordinates api.met.no already receives.
+var YR_LOCATIONS_API = "https://www.yr.no/api/v0/locations/search"
+var YR_ID = /^[0-9]{1,2}-[0-9]{1,10}$/
+var YR_CATEGORY = /^[A-Z]{2}[0-9]{2}$/
+var YR_MATCH_KM = 5       // a name hit further from the coordinates is a different place
+var YR_NEARBY_KM = 2      // the nearest populated place must be this close
+var YR_MAX_ROWS = 50
+
+// Null for no name, or a "name" that is really coordinates ("59.91, 10.75 (approx.)").
+function yrSearchCommand(name) {
+  var q = plainText(name).replace(/^\s+|\s+$/g, "").slice(0, MAX_QUERY_CHARS)
+  if (q === "" || /^-?[0-9]/.test(q)) return null
+  return curlCommand(YR_LOCATIONS_API + "?q=" + encodeURIComponent(q) + "&language=en")
+}
+
+function yrNearbyCommand(latitude, longitude) {
+  var coords = validCoords(latitude, longitude)
+  if (!coords) return null
+  return curlCommand(YR_LOCATIONS_API + "?lat=" + coords.latitude + "&lon=" + coords.longitude + "&language=en")
+}
+
+// Rows with an id shaped exactly like a yr id and a position on the globe;
+// anything else is dropped, garbage gives [].
+function parseYrLocations(raw) {
+  if (responseTooLarge(raw, MAX_BYTES_LOOKUP)) return []
+  try {
+    var data = JSON.parse(String(raw || ""))
+    var rows = toArray(data && data._embedded ? data._embedded.location : null) || []
+    var out = []
+    for (var i = 0; i < rows.length && out.length < YR_MAX_ROWS; i++) {
+      var row = rows[i]
+      if (!row || typeof row !== "object") continue
+      var id = String(row.id === undefined || row.id === null ? "" : row.id)
+      var coords = row.position && typeof row.position === "object" ? validCoords(row.position.lat, row.position.lon) : null
+      if (!YR_ID.test(id) || !coords) continue
+      var category = row.category && typeof row.category === "object" ? String(row.category.id || "") : ""
+      out.push({ id: id, name: plainText(row.name).replace(/^\s+|\s+$/g, ""),
+                 latitude: coords.latitude, longitude: coords.longitude,
+                 category: YR_CATEGORY.test(category) ? category : "" })
+    }
+    return out
+  } catch (e) {
+    return []
+  }
+}
+
+// Equirectangular — fine for "is this hit the same place".
+function distanceKm(aLat, aLon, bLat, bLon) {
+  var dLat = (bLat - aLat) * 111.32
+  var dLon = (bLon - aLon) * 111.32 * Math.cos((aLat + bLat) / 2 * Math.PI / 180)
+  return Math.sqrt(dLat * dLat + dLon * dLon)
+}
+
+// The id to open for a position, or "" for the coordinate page. With a name
+// (a name search): the best hit within YR_MATCH_KM — an exact name first,
+// then a populated place (category C*), then the nearest. Without one (a
+// nearest search, which in a town lists streets and bridges first): the
+// nearest populated place within YR_NEARBY_KM; a street or a waterfall is
+// never "the place".
+function pickYrLocation(rows, latitude, longitude, name) {
+  var coords = validCoords(latitude, longitude)
+  var list = toArray(rows) || []
+  if (!coords || !list.length) return ""
+  var wanted = normalizeName(name || "")
+  var limit = wanted ? YR_MATCH_KM : YR_NEARBY_KM
+  var best = null, bestRank = -1
+  for (var i = 0; i < list.length; i++) {
+    var row = list[i]
+    if (!row || typeof row !== "object" || !YR_ID.test(String(row.id || ""))) continue
+    var km = distanceKm(coords.latitude, coords.longitude, row.latitude, row.longitude)
+    if (!(km <= limit)) continue
+    var populated = /^C/.test(String(row.category || ""))
+    if (!wanted && !populated) continue
+    var rank = (wanted && normalizeName(row.name) === wanted ? 2 : 0) + (populated ? 1 : 0)
+    if (!best || rank > bestRank || (rank === bestRank && km < best.km)) { best = { id: String(row.id), km: km }; bestRank = rank }
+  }
+  return best ? best.id : ""
+}
+
+// ---------------------------------------------------------------------------
 // GPS via GeoClue (the Linux location service)
 // ---------------------------------------------------------------------------
 
@@ -510,7 +813,7 @@ function parseKartverketPoint(raw) {
 // nothing authorises clients: no agent process and no allow-list entry) and
 // "ok". Only the filesystem and process table are consulted — a D-Bus call
 // would start the daemon as a side effect.
-var GEOCLUE_PROBE_COMMAND = ["sh", "-c",
+var GEOCLUE_PROBE_COMMAND = ["timeout", String(CHILD_TIMEOUT_S), "sh", "-c",
   "test -x /usr/lib/geoclue-2.0/demos/where-am-i || { echo missing; exit 0; }; "
   + "if grep -rqs -e '^\\[geoclue-where-am-i\\]' /etc/geoclue/geoclue.conf /etc/geoclue/conf.d/ 2>/dev/null "
   + "|| pgrep -f /usr/lib/geoclue-2.0/demos/agent >/dev/null 2>&1; then echo ok; else echo no-agent; fi"]
@@ -525,6 +828,8 @@ function whereAmICommand() {
 // where-am-i prints a block per update; the last one wins. Coordinates carry
 // a degree sign in geoclue ≥ 2.8.
 function parseWhereAmI(output) {
+  var none = { latitude: null, longitude: null, accuracy: null, description: "", denied: false }
+  if (responseTooLarge(output, MAX_BYTES_LOOKUP)) return none
   var text = String(output || "")
   var denied = /AccessDenied|disallowed|not authorized|Agent rejected/i.test(text)
   var lat = null, lon = null, acc = null, description = ""
@@ -535,7 +840,7 @@ function parseWhereAmI(output) {
     if (m[1] === "Latitude") lat = num(m[2])
     else if (m[1] === "Longitude") lon = num(m[2])
     else if (m[1] === "Accuracy") acc = num(m[2].replace(/[^0-9.\-]/g, ""))
-    else description = m[2].replace(/^\s+|\s+$/g, "")
+    else description = plainText(m[2]).replace(/^\s+|\s+$/g, "")
   }
   if (lat === null || lon === null) return { latitude: null, longitude: null, accuracy: null, description: "", denied: denied }
   return { latitude: lat, longitude: lon, accuracy: acc, description: description, denied: false }
@@ -613,6 +918,10 @@ function metCommand(url, lastModified, maxTimeSec) {
 // Splits `curl -D -` output into {status, lastModified, body}. Handles
 // several header blocks in a row (redirects, 100 Continue) by keeping the
 // last one, and a 304 with no body at all. A transport error gives status 0.
+// Last-Modified is echoed back to the same origin as If-Modified-Since, so
+// only a value shaped like an HTTP date is kept.
+var HTTP_DATE = /^[A-Z][a-z]{2}, [0-9]{2} [A-Z][a-z]{2} [0-9]{4} [0-9]{2}:[0-9]{2}:[0-9]{2} GMT$/
+
 function parseCurlResponse(raw) {
   var result = { status: 0, lastModified: "", body: "" }
   if (responseTooLarge(raw, MAX_BYTES_MET)) return result
@@ -627,7 +936,10 @@ function parseCurlResponse(raw) {
     for (var i = 1; i < lines.length; i++) {
       var colon = lines[i].indexOf(":")
       if (colon === -1) continue
-      if (lines[i].slice(0, colon).toLowerCase() === "last-modified") result.lastModified = lines[i].slice(colon + 1).replace(/^\s+|\s+$/g, "")
+      if (lines[i].slice(0, colon).toLowerCase() === "last-modified") {
+        var value = lines[i].slice(colon + 1).replace(/^\s+|\s+$/g, "")
+        result.lastModified = HTTP_DATE.test(value) ? value : ""
+      }
     }
   }
   result.body = rest.replace(/^\s+|\s+$/g, "")
@@ -688,7 +1000,7 @@ function symbolCodeFor(entry) {
 function currentCondition(entry) {
   if (!entry || !entry.data || !entry.data.instant || !entry.data.instant.details) return null
   var d = entry.data.instant.details
-  var tempC = num(d.air_temperature)
+  var tempC = validTempC(d.air_temperature)
   if (tempC === null) return null
   var windMs = num(d.wind_speed)
   var next1 = entry.data.next_1_hours && entry.data.next_1_hours.details ? entry.data.next_1_hours.details : null
@@ -770,7 +1082,7 @@ function iconForSymbol(code) {
 function symbolLabel(code) {
   var base = symbolBase(code).replace(/^lights(?=s)/, "light")
   var fixed = { clearsky: "Clear sky", fair: "Fair", partlycloudy: "Partly cloudy", cloudy: "Cloudy", fog: "Fog" }
-  if (fixed[base]) return fixed[base]
+  if (Object.prototype.hasOwnProperty.call(fixed, base)) return fixed[base]
   var m = /^(light|heavy)?(rain|sleet|snow)(showers)?(andthunder)?$/.exec(base)
   // An id outside MET's vocabulary is shown only if it is shaped like one.
   if (!m) return /^[a-z_]{1,64}$/.test(base) ? base.replace(/_/g, " ") : ""
@@ -812,7 +1124,7 @@ function dailyForecast(forecast, todayString, maxDays) {
     var key = localDateKey(t)
     if (!isFutureForecastDate(key, todayString)) continue
     if (!entry.data || !entry.data.instant || !entry.data.instant.details) continue
-    var temp = num(entry.data.instant.details.air_temperature)
+    var temp = validTempC(entry.data.instant.details.air_temperature)
     if (temp === null) continue
     var bucket = buckets[key]
     if (!bucket) {
@@ -860,7 +1172,7 @@ function hourlyForecast(forecast, nowMs, hours) {
     if (!next1) break
     var t = new Date(entry.time)
     if (isNaN(t.getTime())) continue
-    var temp = num(entry.data.instant.details.air_temperature)
+    var temp = validTempC(entry.data.instant.details.air_temperature)
     if (temp === null) continue
     var code = next1.summary && next1.summary.symbol_code ? String(next1.summary.symbol_code) : ""
     out.push({
@@ -881,6 +1193,8 @@ function hourlyForecast(forecast, nowMs, hours) {
 function ticksFor(min, max) {
   var steps = [100, 50, 20, 10, 5, 2, 1]
   var ticks = []
+  // validTempC keeps the range small; this is the backstop for the loop.
+  if (!isFinite(min) || !isFinite(max) || max - min > 1000) return ticks
   for (var i = 0; i < steps.length; i++) {
     ticks = []
     for (var v = Math.ceil(min / steps[i]) * steps[i]; v <= max; v += steps[i]) ticks.push(v)
@@ -1125,6 +1439,16 @@ if (typeof module !== "undefined") {
     TEXTFORECAST_INTERVAL_MS: TEXTFORECAST_INTERVAL_MS, IP_LOCATION_URLS: IP_LOCATION_URLS,
     MAX_BYTES_LOOKUP: MAX_BYTES_LOOKUP, MAX_BYTES_MET: MAX_BYTES_MET, responseTooLarge: responseTooLarge,
     MAX_TEXT_CHARS: MAX_TEXT_CHARS, plainText: plainText,
+    CHILD_TIMEOUT_S: CHILD_TIMEOUT_S, MAX_QUERY_CHARS: MAX_QUERY_CHARS, MAX_PINNED: MAX_PINNED, MAX_RECENT: MAX_RECENT,
+    validCoords: validCoords, formatCoord: formatCoord, validTempC: validTempC, TEMP_C_MIN: TEMP_C_MIN, TEMP_C_MAX: TEMP_C_MAX,
+    // saved places
+    parsePlaces: parsePlaces, rememberPlace: rememberPlace, togglePin: togglePin, canPin: canPin, samePlace: samePlace,
+    // child processes and the yr.no link
+    settingCommand: settingCommand, persistCommand: persistCommand, clearLocationCommand: clearLocationCommand,
+    notificationCommand: notificationCommand, notificationHeadline: notificationHeadline, YR_SITE: YR_SITE, yrLanguage: yrLanguage, yrUrl: yrUrl, browserCommand: browserCommand,
+    YR_ID: YR_ID, YR_LOCATIONS_API: YR_LOCATIONS_API, YR_MATCH_KM: YR_MATCH_KM, YR_NEARBY_KM: YR_NEARBY_KM,
+    yrSearchCommand: yrSearchCommand, yrNearbyCommand: yrNearbyCommand, parseYrLocations: parseYrLocations,
+    distanceKm: distanceKm, pickYrLocation: pickYrLocation,
     GEOCLUE_PROBE_COMMAND: GEOCLUE_PROBE_COMMAND, TEXTFORECAST_URL: TEXTFORECAST_URL, GLYPH_UNAVAILABLE: GLYPH_UNAVAILABLE,
     refreshMinutes: refreshMinutes, graphHours: graphHours, settingBool: settingBool,
     // units and formatting

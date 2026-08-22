@@ -31,6 +31,14 @@ test("GeoClue where-am-i output parsing and states", () => {
   assert.match(Model.gpsStateHelp("no-agent"), /autostart\.lua/)
   assert.equal(Model.gpsStateHelp("ok"), "")
   assert.match(Model.gpsStateSummary("ok"), /GeoClue/)
-  assert.equal(Model.GEOCLUE_PROBE_COMMAND[0], "sh")
+  assert.deepEqual(Model.GEOCLUE_PROBE_COMMAND.slice(0, 3), ["timeout", String(Model.CHILD_TIMEOUT_S), "sh"])
   assert.ok(Model.whereAmICommand().join(" ").includes("where-am-i -t 12"))
+})
+
+test("where-am-i output is bounded and its text is plain", () => {
+  const fix = "Latitude: 1°\nLongitude: 2°\nAccuracy: 5 meters\nDescription: <img src=x> Wi-Fi\n"
+  assert.equal(Model.parseWhereAmI(fix).description, "img src=x Wi-Fi")
+  const huge = Model.parseWhereAmI(fix + "#".repeat(Model.MAX_BYTES_LOOKUP))
+  assert.equal(huge.latitude, null, "oversized stdout is refused, not parsed")
+  assert.equal(huge.denied, false)
 })

@@ -33,10 +33,11 @@ omarchy plugin remove io.github.knutsi.yr
 ```
 
 That deletes `~/.config/omarchy/plugins/io.github.knutsi.yr` and the bar
-entry. The plugin keeps no other state of its own: the shared location file
+entry. The plugin keeps no files of its own: the shared location file
 `~/.local/state/omarchy/settings/weather.json` belongs to Omarchy's stock
 weather widget (clear it with `omarchy-weather-location --clear`), and the
-settings live on the widget's entry in `~/.config/omarchy/shell.json`.
+settings — together with the saved places list — live on the widget's entry
+in `~/.config/omarchy/shell.json`, which `omarchy plugin remove` deletes.
 
 ## What you get
 
@@ -44,8 +45,9 @@ A theme-tinted Nerd Font glyph and the temperature in the bar; the popup,
 top to bottom:
 
 1. **Current weather** — glyph, temperature (click the unit to cycle °C → °F
-   → K), condition, location with search and satellite buttons, wind,
-   humidity, sunrise and sunset (computed locally, no extra requests).
+   → K), condition, location with search, satellite and globe buttons
+   (the globe opens the same forecast on yr.no), wind, humidity, sunrise and
+   sunset (computed locally, no extra requests).
 2. **Weather warnings** (*farevarsel*) — MET's active alerts for the spot,
    coloured by level; click one for the description and advice. Shown in
    English unless your locale is Norwegian.
@@ -69,7 +71,9 @@ top to bottom:
 | Left click the pill | Open / close the popup |
 | Middle click | Force a refresh (re-detects the location too) |
 | Right click | Desktop notification with the current conditions |
-| Click the location name, its magnifier, or the `Location` button | Search view: type a place, pick with ↑/↓ + Enter or click; Esc / ✕ goes back; "Use automatic location" returns to IP auto-detect |
+| Click the location name, its magnifier, or the `Location` button | Search view: the box opens empty with your saved places under it (pinned first, then the last five searches); pick one with ↑/↓ + Enter or a click, or type to search. Esc / ✕ goes back; "Use automatic location" returns to IP auto-detect |
+| Click the pin on a saved place | Pin it so it stays at the top of the list (up to five); click again to unpin. Recent searches beyond the last five fall off on their own |
+| Click the globe button | Open the same location on [yr.no](https://www.yr.no) in your default browser — the place's own page when yr's register knows it (looked up by the name in use, then by the nearest town), otherwise a coordinate page. Norwegian site for a Norwegian locale, English otherwise |
 | Click the satellite button | Locate with GPS / Wi-Fi positioning through GeoClue — see [docs/geoclue.md](docs/geoclue.md). Dimmed with an explanatory tooltip when the service is missing |
 | Click the "updated HH:MM" stamp | Fetch again (at most once per 10 s) |
 | Tab / Shift-Tab in the popup | Move to the neighbouring bar panel |
@@ -85,6 +89,7 @@ omarchy-shell io.github.knutsi.yr toggleUnit        # °C → °F → K → °C
 omarchy-shell io.github.knutsi.yr unit imperial     # set a unit directly
 omarchy-shell io.github.knutsi.yr textForecast false  # hide/show the tekstvarsel
 omarchy-shell io.github.knutsi.yr location          # print the location in use
+omarchy-shell io.github.knutsi.yr status            # JSON: location, save/GPS state, last fetch, errors
 ```
 
 ## Settings
@@ -124,11 +129,13 @@ The state lives in `~/.local/state/omarchy/settings/weather.json` and is
 watched, so edits take effect immediately.
 
 Without stored coordinates the position is detected from your public IP
-address (via [ipwho.is](https://ipwho.is), falling back to
-[geojs.io](https://www.geojs.io)) — city-level at best, and often off on
-CG-NAT or satellite connections. Set the location explicitly if the
-forecast looks wrong. The lookup happens once per shell session (and on
-middle-click), not on every refresh.
+address: the plugin asks [ipwho.is](https://ipwho.is) (falling back to
+[geojs.io](https://www.geojs.io)) what city the request came from, which
+means those services see your IP address — that is all they are sent, and
+it happens automatically, once per shell session (and on middle-click), for
+as long as no location is stored. City-level at best, and often off on
+CG-NAT or satellite connections; set the location explicitly if the
+forecast looks wrong, and nothing is looked up from the IP again.
 
 **Place search** asks three services at once and merges the answers:
 [Open-Meteo](https://open-meteo.com/en/docs/geocoding-api) (towns and
@@ -136,11 +143,20 @@ cities worldwide), [Kartverket](https://www.kartverket.no/en/api-and-data/stedsn
 (Norway's official place-name register — this is what finds farms, hotels,
 ski areas and seters such as *Sanderstølen*), and
 [Photon](https://photon.komoot.io) (OpenStreetMap, worldwide, typo
-tolerant). Only a listed match can be saved.
+tolerant). What you type is sent to all three as you type (from two
+letters, at most 100 characters); only a listed match can be saved.
+
+**Saved places.** The last five places you picked are listed when the search
+box is empty, and up to five can be pinned to stay at the top. The list is
+stored as a `places` array on the widget's `shell.json` entry — name,
+coordinates and a short description, nothing else — and is removed with the
+plugin.
 
 **GPS / Wi-Fi positioning** uses GeoClue when it is installed; the satellite
-button explains what is missing otherwise. Setup, privacy notes and the
-accuracy caveats are in [docs/geoclue.md](docs/geoclue.md).
+button explains what is missing otherwise. After a fix the coordinates are
+sent to Photon (and, in Norway, Kartverket) once to find a place name — only
+when you press the button. Setup, privacy notes and the accuracy caveats are
+in [docs/geoclue.md](docs/geoclue.md).
 
 ## How it talks to MET Norway
 
@@ -165,10 +181,36 @@ accuracy caveats are in [docs/geoclue.md](docs/geoclue.md).
 ## Dependencies and privacy
 
 Everything it needs ships with Omarchy: `curl`, `sh`, `timeout`, `grep`,
-`pgrep` and the Quickshell shell itself. No packages are installed, no
-privileges are requested, and the only files written are your own
-`shell.json` entry (via `omarchy bar set`, on a click) and the shared
-location file (via `omarchy-weather-location`, on a click).
+`pgrep`, `omarchy-launch-browser` and the Quickshell shell itself. No
+packages are installed, no privileges are requested, and the only files
+written are your own `shell.json` entry (settings via `omarchy bar set`,
+the saved places through the shell's own config writer — both on a click)
+and the shared location file (via `omarchy-weather-location`, on a click). Every helper is started with an argument list, never through a
+shell, and each one the plugin waits for runs under `timeout`.
+
+What leaves the machine, and when:
+
+| Data | Goes to | When |
+|---|---|---|
+| Your position, rounded to four decimals (~11 m) | api.met.no | Every refresh (forecast, warnings, tekstvarsel) |
+| The place name in use, then (if that finds nothing) the same rounded position | www.yr.no | Only when you click the globe button, once per place per session |
+| Your public IP address (implicitly, as the requester) | ipwho.is, then get.geojs.io | Automatically, while no location is stored |
+| The text you type in the search box | geocoding-api.open-meteo.com, api.kartverket.no, photon.komoot.io | As you type, from two letters |
+| A GeoClue fix (coordinates) | photon.komoot.io; api.kartverket.no in Norway | Only after you press the satellite button |
+
+No identifiers other than the `User-Agent` (plugin name, version, repository
+URL — MET requires one) are sent anywhere.
+
+**The globe button, assessed.** The yr.no link is fixed text plus either a
+yr location id (accepted only if it is exactly `<digits>-<digits>`) or two
+numbers — no name or other string from a server can enter it — and the URL
+is handed to Omarchy's own browser launcher as an argument, so there is
+nothing for a shell to interpret. The id comes from yr's own site API (the
+one yr.no's pages use; not a published API, so if it changes or fails the
+button falls back to the coordinate page within a few seconds). What it
+discloses is the place name in use or the rounded position, to the same
+organisation (MET Norway / NRK) that already receives the position for every
+forecast, and only when you click.
 
 Optional, user-installed: [`geoclue`](https://archlinux.org/packages/extra/x86_64/geoclue/)
 enables the satellite button. The plugin only *detects* it; installing it is
@@ -176,6 +218,7 @@ your decision and command.
 
 Network services used at runtime (all HTTPS, no keys):
 [api.met.no](https://api.met.no/) (forecast, warnings, tekstvarsel),
+[www.yr.no](https://www.yr.no/) (the place's page id, on a globe click),
 [geocoding-api.open-meteo.com](https://open-meteo.com/en/docs/geocoding-api),
 [api.kartverket.no](https://api.kartverket.no/stedsnavn/v1/),
 [photon.komoot.io](https://photon.komoot.io), and for IP-based auto-detect
