@@ -45,7 +45,7 @@ test("every Text and PanelSectionHeader in plugin QML is textFormat: Text.PlainT
 
 // Built from char codes so no raw control byte sits in this source file.
 const chr = String.fromCharCode
-const NUL = chr(0), ESC = chr(27), NEL = chr(0x85)
+const NUL = chr(0), ESC = chr(27), NEL = chr(0x85), LONE = chr(0xD800)
 const CONTROL_CLASS = [[0, 8], [11, 31], [127, 159]].map(([a, b]) => chr(a) + "-" + chr(b)).join("")
 const DIRTY = new RegExp("[<>" + CONTROL_CLASS + "]")
 
@@ -56,7 +56,8 @@ const PAYLOADS = [
   '<img src="http://203.0.113.1/x.png" width="99999" height="99999">',
   '<a href="file:///etc/passwd">see</a>',
   "<!DOCTYPE html><b>bold</b>",
-  NUL + ESC + "[31m" + NEL
+  NUL + ESC + "[31m" + NEL,
+  LONE + "x" + chr(0xDFFF)      // unpaired surrogates: encodeURIComponent throws on them
 ]
 
 // Every string in the body is tainted except the structural keys that are
@@ -146,6 +147,10 @@ test("plainText: strips angle brackets and control bytes, bounds length, keeps r
   const warning = "Kraftige vindkast, opp mot 25 m/s.\nSikre løse gjenstander – æøå ÆØÅ.\tTab beholdes."
   assert.equal(Model.plainText(warning), warning)
   assert.equal(Model.plainText("&lt;not-a-tag&gt; &amp;"), "&lt;not-a-tag&gt; &amp;", "entities are harmless without a tag and stay literal")
+  assert.equal(Model.plainText("a" + LONE + "b" + chr(0xDFFF) + "c"), "abc", "unpaired surrogates dropped")
+  assert.equal(Model.plainText("😀 Ålesund"), "😀 Ålesund", "a real pair survives")
+  assert.doesNotThrow(() => encodeURIComponent(Model.plainText(LONE + "Oslo")))
+  assert.ok(Model.yrSearchCommand(LONE + "Oslo"), "a stored name with a lone surrogate still becomes a request")
 })
 
 test("every parser that yields a rendered string calls plainText (chokepoint count)", () => {

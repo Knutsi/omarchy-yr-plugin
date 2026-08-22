@@ -115,9 +115,11 @@ Item {
     pending.cacheKey = locationService.key + "|" + pending.name
     if (siteCache[pending.cacheKey] !== undefined) { launchSite(pending, siteCache[pending.cacheKey]); return }
     if (siteBusy) return
+    // Build the request before flipping the busy flag, so nothing can leave
+    // the globe stuck on its spinner.
+    var byName = Model.yrSearchCommand(pending.name)
     sitePending = pending
     siteBusy = true
-    var byName = Model.yrSearchCommand(pending.name)
     if (byName) siteRequest.start(byName, "name")
     else startNearbySite()
   }

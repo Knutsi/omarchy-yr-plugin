@@ -75,6 +75,8 @@ function plainText(value) {
   return String(value === undefined || value === null ? "" : value)
     .replace(/[<>]/g, "")
     .replace(/[\u0000-\u0008\u000B-\u001F\u007F-\u009F]/g, "")
+    // An unpaired surrogate is not text, and encodeURIComponent throws on it.
+    .replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]|[\uD800-\uDFFF]/g, function(m) { return m.length === 2 ? m : "" })
     .slice(0, MAX_TEXT_CHARS)
 }
 
