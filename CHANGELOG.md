@@ -6,6 +6,23 @@ All notable changes to this plugin are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.3.3] — 2026-08-22
+### Security
+- Strings from outside the plugin (MET warnings and text forecasts, geocoder
+  and IP-location names, the stored location file) are rendered as plain
+  text: every parser strips angle brackets and control characters and caps
+  field length (`plainText()`), and every `Text` in the plugin's QML sets
+  `textFormat: Text.PlainText`. Previously a markup-shaped field (for example
+  `<img src="…">` in a warning description) would be auto-detected as rich
+  text and could make the shell load a remote resource. Raised by the
+  marketplace security review (HANCORE-linux/omarchy-plugin-marketplace#1448).
+- An unknown MET `symbol_code` is shown as condition text only when it is
+  shaped like one (`[a-z_]`); the Photon reverse lookup's country code must be
+  a two-letter code.
+### Added
+- `test/rendering.test.mjs`: every `Text`/`PanelSectionHeader` in plugin QML
+  must be PlainText, and every parser is probed with tainted fixtures.
+
 ## [0.3.2] — 2026-08-22
 
 ### Added

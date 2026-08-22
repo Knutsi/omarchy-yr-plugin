@@ -79,6 +79,7 @@ Column {
     height: Style.space(28)
 
     Text {
+      textFormat: Text.PlainText
       anchors.left: parent.left
       anchors.leftMargin: root.gutter
       anchors.verticalCenter: parent.verticalCenter
@@ -155,6 +156,7 @@ Column {
     spacing: Style.space(6)
 
     Text {
+      textFormat: Text.PlainText
       visible: root.saving
       text: "󰦖"
       color: root.muted
@@ -163,6 +165,7 @@ Column {
       RotationAnimator on rotation { running: root.saving; from: 0; to: 360; duration: 800; loops: Animation.Infinite }
     }
     Text {
+      textFormat: Text.PlainText
       text: root.saving ? "Saving and fetching the forecast…"
         : (root.location.saveError !== "" ? root.location.saveError
         : (root.hint !== "" ? root.hint
@@ -203,12 +206,14 @@ Column {
 
           Text {
             id: nameText
+            textFormat: Text.PlainText
             text: modelData.name
             color: index === root.selectedIndex ? Style.hoverStateColor(root.foreground, Color.accent) : root.foreground
             font.family: root.fontFamily
             font.pixelSize: Style.font.body
           }
           Text {
+            textFormat: Text.PlainText
             visible: text !== ""
             width: Math.max(0, row.width - nameText.width - Style.space(8))
             text: modelData.description
@@ -240,6 +245,7 @@ Column {
 
     Text {
       id: nowText
+      textFormat: Text.PlainText
       anchors.left: parent.left
       anchors.leftMargin: root.gutter
       anchors.verticalCenter: parent.verticalCenter
@@ -271,6 +277,7 @@ Column {
 
   // ---- GPS status: what the service can (or cannot) do right now.
   Text {
+    textFormat: Text.PlainText
     anchors.left: parent.left
     anchors.leftMargin: root.gutter
     width: parent.width - root.gutter * 2
@@ -283,6 +290,7 @@ Column {
   }
 
   Text {
+    textFormat: Text.PlainText
     anchors.left: parent.left
     anchors.leftMargin: root.gutter
     text: "Place names © Kartverket (CC BY 4.0)  ·  © OpenStreetMap contributors"

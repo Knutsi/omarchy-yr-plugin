@@ -27,6 +27,7 @@ Item {
         spacing: Style.space(8)
 
         Text {
+          textFormat: Text.PlainText
           anchors.verticalCenter: parent.verticalCenter
           text: modelData.icon
           color: root.foreground
@@ -39,6 +40,7 @@ Item {
           spacing: Style.space(2)
 
           Text {
+            textFormat: Text.PlainText
             text: Model.dayName(modelData.date, function(d) { return Qt.formatDate(d, "ddd") }).toUpperCase()
             color: Qt.darker(root.foreground, 1.4)
             font.family: root.fontFamily
@@ -49,12 +51,14 @@ Item {
           Row {
             spacing: Style.space(5)
             Text {
+              textFormat: Text.PlainText
               text: Model.bareTempForDay(modelData, "max", root.weather.unit)
               color: root.foreground
               font.family: root.fontFamily
               font.pixelSize: Style.font.body
             }
             Text {
+              textFormat: Text.PlainText
               text: Model.bareTempForDay(modelData, "min", root.weather.unit)
               color: root.muted
               font.family: root.fontFamily

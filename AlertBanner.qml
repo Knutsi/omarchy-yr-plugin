@@ -51,6 +51,7 @@ Column {
           width: parent.width
 
           Text {
+            textFormat: Text.PlainText
             text: "󰀦"  // nf-md-alert
             color: row.level
             font.family: root.fontFamily
@@ -58,6 +59,7 @@ Column {
             anchors.verticalCenter: parent.verticalCenter
           }
           Text {
+            textFormat: Text.PlainText
             text: row.modelData.name + "  ·  " + row.modelData.levelLabel
             color: root.foreground
             font.family: root.fontFamily
@@ -66,6 +68,7 @@ Column {
             anchors.verticalCenter: parent.verticalCenter
           }
           Text {
+            textFormat: Text.PlainText
             text: row.expanded ? "󰅃" : "󰅀"  // nf-md-chevron_up / chevron_down
             color: Qt.darker(root.foreground, 1.5)
             font.family: root.fontFamily
@@ -75,6 +78,7 @@ Column {
         }
 
         Text {
+          textFormat: Text.PlainText
           width: parent.width
           text: row.modelData.area
           color: Qt.darker(root.foreground, 1.4)
@@ -84,6 +88,7 @@ Column {
         }
 
         Text {
+          textFormat: Text.PlainText
           visible: row.expanded && text !== ""
           width: parent.width
           text: row.modelData.description
@@ -94,6 +99,7 @@ Column {
         }
 
         Text {
+          textFormat: Text.PlainText
           visible: row.expanded && text !== ""
           width: parent.width
           text: row.modelData.instruction
