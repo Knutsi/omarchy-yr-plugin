@@ -115,6 +115,8 @@ Panel {
       blocked: root.editing
       onReturnRequested: root.startEditing()
       onCloseRequested: root.close()
+      // ← / → (or h / l) switch between the pinned places.
+      onMoveRequested: function(dx, dy) { if (dx !== 0 && root.service) root.service.switchPinned(dx) }
       onTabRequested: function(direction) { root.switchPanel(direction) }
 
       Flickable {

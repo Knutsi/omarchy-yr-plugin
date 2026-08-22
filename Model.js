@@ -571,6 +571,26 @@ function rememberPlace(places, row) {
   return pinned.concat(recent)
 }
 
+// The pinned place before (direction < 0) or after (> 0) the location in
+// use, wrapping around; from an unpinned location the first or last pin.
+// "In use" is judged by position alone (~2 km), since the name in use may
+// come from a different geocoder than the pin. Null when there is nothing
+// to switch to.
+function neighbourPinned(places, current, direction) {
+  var pinned = parsePlaces(places).filter(function(p) { return p.pinned })
+  if (!pinned.length) return null
+  var here = current ? validCoords(current.latitude, current.longitude) : null
+  var index = -1
+  if (here) {
+    for (var i = 0; i < pinned.length; i++) {
+      if (Math.abs(pinned[i].latitude - here.latitude) < 0.02 && Math.abs(pinned[i].longitude - here.longitude) < 0.04) { index = i; break }
+    }
+  }
+  var step = direction < 0 ? -1 : 1
+  var next = index === -1 ? (step > 0 ? 0 : pinned.length - 1) : (index + step + pinned.length) % pinned.length
+  return next === index ? null : pinned[next]
+}
+
 function canPin(places) {
   return pinnedCount(parsePlaces(places)) < MAX_PINNED
 }
@@ -1443,6 +1463,7 @@ if (typeof module !== "undefined") {
     validCoords: validCoords, formatCoord: formatCoord, validTempC: validTempC, TEMP_C_MIN: TEMP_C_MIN, TEMP_C_MAX: TEMP_C_MAX,
     // saved places
     parsePlaces: parsePlaces, rememberPlace: rememberPlace, togglePin: togglePin, canPin: canPin, samePlace: samePlace,
+    neighbourPinned: neighbourPinned,
     // child processes and the yr.no link
     settingCommand: settingCommand, persistCommand: persistCommand, clearLocationCommand: clearLocationCommand,
     notificationCommand: notificationCommand, notificationHeadline: notificationHeadline, YR_SITE: YR_SITE, yrLanguage: yrLanguage, yrUrl: yrUrl, browserCommand: browserCommand,

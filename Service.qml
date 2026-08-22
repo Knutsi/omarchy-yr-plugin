@@ -98,6 +98,13 @@ Item {
   function rememberPlace(place) { savePlaces(Model.rememberPlace(places, place)) }
   function togglePin(place) { savePlaces(Model.togglePin(places, place)) }
 
+  // ← / → in the popup (and the IPC verbs) walk the pinned places.
+  function switchPinned(direction) {
+    if (locationService.saveState !== "idle") return
+    var next = Model.neighbourPinned(places, locationService.effective, direction)
+    if (next) locationService.persist(next.name, next.latitude, next.longitude)
+  }
+
   // ---- The same forecast on yr.no, for the location in use: the place's
   //      own page when yr's register knows it (found by the name in use,
   //      then by the nearest town), the coordinate page otherwise. The URL
@@ -181,6 +188,8 @@ Item {
     function toggleUnit(): void { root.toggleUnit() }
     function textForecast(enabled: string): void { root.setTextForecast(Model.settingBool(enabled, true)) }
     function edit(): void { root.requestEdit() }
+    function nextPinned(): void { root.switchPinned(1) }
+    function previousPinned(): void { root.switchPinned(-1) }
     function location(): string { return JSON.stringify(locationService.effective) }
     function status(): string {
       return JSON.stringify({

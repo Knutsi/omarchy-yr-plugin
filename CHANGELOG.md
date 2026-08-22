@@ -6,6 +6,10 @@ All notable changes to this plugin are documented here. The format follows
 
 ## [Unreleased]
 ### Added
+- ← / → (or h / l) in the popup switch the location between the pinned
+  places, wrapping around; `nextPinned` / `previousPinned` IPC verbs do the
+  same for keybindings. The search view shows a tip once a place is pinned.
+### Added
 - Saved places: the search box now opens empty with your last five searches
   listed under it, and up to five places can be pinned to the top. Stored
   as a `places` array on the widget's `shell.json` entry, the way
