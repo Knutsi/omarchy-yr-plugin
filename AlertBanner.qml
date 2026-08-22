@@ -1,5 +1,6 @@
 import QtQuick
 import qs.Commons
+import "Model.js" as Model
 
 // MET weather warnings (farevarsel) for the location: one row per alert with
 // the awareness colour as a stripe; click to expand the description.
@@ -9,7 +10,7 @@ Column {
   property var alerts: []            // Model.parseAlerts() output
   property color foreground: Color.foreground
   property string fontFamily: Style.font.family
-  property int expandedIndex: -1
+  property string expandedId: ""
 
   spacing: Style.space(6)
   visible: alerts && alerts.length > 0
@@ -21,13 +22,8 @@ Column {
       id: row
       required property var modelData
       required property int index
-      readonly property bool expanded: root.expandedIndex === index
-      readonly property color level: alertColorFor(modelData.level)
-
-      function alertColorFor(level) {
-        var colors = { red: "#d0473a", orange: "#e07b39", yellow: "#d4a72c", green: "#5c9e5c" }
-        return colors[String(level || "").toLowerCase()] || colors.yellow
-      }
+      readonly property bool expanded: root.expandedId === modelData.id
+      readonly property color level: Model.alertColor(modelData.level)
 
       width: parent.width
       height: content.implicitHeight + Style.space(16)
@@ -110,7 +106,7 @@ Column {
       }
 
       TapHandler {
-        onTapped: root.expandedIndex = row.expanded ? -1 : row.index
+        onTapped: root.expandedId = row.expanded ? "" : row.modelData.id
       }
       HoverHandler {
         id: rowHover

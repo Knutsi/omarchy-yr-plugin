@@ -25,7 +25,7 @@ Item {
   readonly property real columnWidth: count > 0 ? plotWidth / count : 0
   readonly property int symbolStep: columnWidth >= Style.space(18) ? 1 : (columnWidth >= Style.space(10) ? 2 : 3)
   readonly property int labelStep: columnWidth >= Style.space(34) ? 1 : (columnWidth >= Style.space(14) ? 3 : 6)
-  readonly property var scale: Model.graphScale(points, unit)
+  readonly property var axis: Model.graphScale(points, unit)
 
   implicitHeight: symbolRowHeight + plotHeight + labelRowHeight
   visible: count > 1
@@ -70,7 +70,7 @@ Item {
       var n = pts.length
       if (n < 2) return
 
-      var s = root.scale
+      var s = root.axis
       var left = root.plotLeft
       var w = root.plotWidth
       var top = Style.space(6)
@@ -98,7 +98,7 @@ Item {
         ctx.stroke()
         ctx.fillStyle = Qt.rgba(fg.r, fg.g, fg.b, 0.6)
         ctx.textAlign = "right"
-        ctx.fillText(s.ticks[g] + "°", left - Style.space(6), gy)
+        ctx.fillText(s.ticks[g] + Model.degreeSign(root.unit), left - Style.space(6), gy)
       }
 
       // Precipitation bars, scaled so the wettest hour fills ~55% of the plot.
@@ -116,8 +116,7 @@ Item {
           ctx.fillRect(bx, bottom - bh, bw, bh)
           if (colW >= Style.space(16)) {
             ctx.fillStyle = Qt.rgba(pc.r, pc.g, pc.b, 0.95)
-            var label = root.unit === "imperial" ? (Math.round(mm / 25.4 * 100) / 100).toString() : (Math.round(mm * 10) / 10).toString()
-            ctx.fillText(label, root.columnCenter(i), bottom - bh - captionPx * 0.7)
+            ctx.fillText(Model.formatPrecip(mm, root.unit).replace(/ (mm|in)$/, ""), root.columnCenter(i), bottom - bh - captionPx * 0.7)
           }
         }
         // Right axis: precipitation unit hint.
@@ -172,6 +171,8 @@ Item {
   onTempColorChanged: canvas.requestPaint()
   onPrecipColorChanged: canvas.requestPaint()
   onWidthChanged: canvas.requestPaint()
+  onPlotHeightChanged: canvas.requestPaint()
+  onColumnWidthChanged: canvas.requestPaint()
 
   // ---- Hour labels.
   Repeater {
