@@ -2,19 +2,21 @@
   "schemaVersion": 1,
   "id": "io.github.knutsi.yr",
   "name": "Yr.no (unofficial)",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "author": "Knut Åbjørsbråten",
   "license": "MIT",
-  "description": "Unofficial yr.no weather: MET Norway forecast, warnings, hourly graph and tekstvarsel in the bar",
+  "description": "Unofficial yr.no (MET Norway) weather: forecast, warnings, hourly graph and tekstvarsel in the bar",
   "kinds": [
+    "service",
     "bar-widget"
   ],
   "entryPoints": {
+    "service": "Service.qml",
     "barWidget": "BarWidget.qml"
   },
   "barWidget": {
     "displayName": "Yr.no (unofficial)",
-    "description": "Current conditions, warnings, hourly graph, 4-day forecast and Norwegian text forecast from api.met.no",
+    "description": "Current conditions, warnings, hourly graph, 4-day forecast and Norwegian text forecast from yr.no's data source (MET Norway)",
     "category": "Info",
     "allowMultiple": false,
     "defaultSection": "center",
