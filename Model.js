@@ -1463,6 +1463,7 @@ if (typeof module !== "undefined") {
     MAX_TEXT_CHARS: MAX_TEXT_CHARS, plainText: plainText,
     CHILD_TIMEOUT_S: CHILD_TIMEOUT_S, MAX_QUERY_CHARS: MAX_QUERY_CHARS, MAX_PINNED: MAX_PINNED, MAX_RECENT: MAX_RECENT,
     validCoords: validCoords, formatCoord: formatCoord, validTempC: validTempC, TEMP_C_MIN: TEMP_C_MIN, TEMP_C_MAX: TEMP_C_MAX,
+    num: num, strictNum: strictNum,
     // saved places
     parsePlaces: parsePlaces, rememberPlace: rememberPlace, togglePin: togglePin, canPin: canPin, samePlace: samePlace,
     neighbourPinned: neighbourPinned,
