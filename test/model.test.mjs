@@ -299,8 +299,9 @@ test("reverse lookup names a GPS fix", () => {
 })
 
 test("GeoClue where-am-i output parsing and states", () => {
-  const two = "New location:\nLatitude:    59.913900\nLongitude:   10.752200\nAccuracy:    25000 meters\nDescription: \nTimestamp:   x\n"
-    + "New location:\nLatitude:    59.927300\nLongitude:   10.738100\nAccuracy:    64 meters\nDescription: Wi-Fi\nTimestamp:   y\n"
+  // Real output (geoclue 2.8.2) carries a degree sign after the coordinates.
+  const two = "New location:\nLatitude:    59.913900°\nLongitude:   10.752200°\nAccuracy:    25000 meters\nDescription: ipf fallback (from WiFi data)\nTimestamp:   x\n"
+    + "New location:\nLatitude:    59.927300°\nLongitude:   10.738100°\nAccuracy:    64 meters\nDescription: Wi-Fi\nTimestamp:   y\n"
   const fix = Model.parseWhereAmI(two)
   assert.equal(fix.latitude, 59.9273)
   assert.equal(fix.longitude, 10.7381)

@@ -40,6 +40,7 @@ Panel {
     root.controller.show()
     locationFile.reload()
     root.refresh(false)
+    probeGps()
   }
 
   function openFromHotkey() {
@@ -47,6 +48,7 @@ Panel {
     root.controller.show()
     locationFile.reload()
     root.refresh(false)
+    probeGps()
     Qt.callLater(function() {
       if (root.opened) setCenterHoverRevealSuppressed(true)
     })
@@ -153,6 +155,9 @@ Panel {
   property string pendingFixName: ""
   readonly property string gpsTooltip: gpsBusy ? "Locating…" : Model.gpsStateText(gpsState)
 
+  // Cheap (filesystem + process table only), asynchronous, and re-run every
+  // time the popup opens — so installing GeoClue while the shell is running
+  // enables the satellite button on the next open without a restart.
   function probeGps() {
     if (!gpsProbeProc.running) gpsProbeProc.running = true
   }
