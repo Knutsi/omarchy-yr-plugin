@@ -1,4 +1,4 @@
-// Model.js — pure helpers for the Yr weather plugin (knutsi.weather-yr).
+// Model.js — pure helpers for the Yr weather plugin (io.github.knutsi.yr).
 //
 // Everything here is plain JavaScript with no QML/Quickshell dependencies so
 // it can be unit-tested with `node --test test/`. Panel.qml and BarWidget.qml

@@ -5,7 +5,7 @@ import qs.Commons
 import qs.Ui
 import "Model.js" as Model
 
-// Detail popup + data layer for knutsi.weather-yr.
+// Detail popup + data layer for io.github.knutsi.yr.
 //
 // Layout, top to bottom: current weather · weather warnings · hour-by-hour
 // graph · next four days · tekstvarsel (Norway) · settings · attribution.
@@ -22,8 +22,8 @@ import "Model.js" as Model
 // is detected once from the IP address (city-level).
 Panel {
   id: root
-  moduleName: "knutsi.weather-yr"
-  ipcTarget: "knutsi.weather-yr"
+  moduleName: "io.github.knutsi.yr"
+  ipcTarget: "io.github.knutsi.yr"
   manageIpc: false
 
   property var anchorItem: null
@@ -260,7 +260,7 @@ Panel {
   // Persists the choice on this widget's shell.json entry; the shell pushes
   // the new settings back into the widget, which re-renders everything.
   function setUnit(name) {
-    unitSaveProc.command = ["omarchy", "bar", "set", "knutsi.weather-yr", "unit", Model.unitSystem(name)]
+    unitSaveProc.command = ["omarchy", "bar", "set", "io.github.knutsi.yr", "unit", Model.unitSystem(name)]
     unitSaveProc.running = true
   }
 
@@ -279,7 +279,7 @@ Panel {
   readonly property var textReport: Model.textForecastFor(textFeatures, effectiveLocation.latitude, effectiveLocation.longitude, tick.getTime(), setting("textForecastArea", ""))
 
   function setTextForecast(enabled) {
-    textSaveProc.command = ["omarchy", "bar", "set", "knutsi.weather-yr", "textForecast", enabled ? "true" : "false", "--json"]
+    textSaveProc.command = ["omarchy", "bar", "set", "io.github.knutsi.yr", "textForecast", enabled ? "true" : "false", "--json"]
     textSaveProc.running = true
   }
 

@@ -2,7 +2,7 @@ import QtQuick
 import qs.Commons
 import qs.Ui
 
-// Bar pill for knutsi.weather-yr: a theme-tinted Nerd Font glyph (optionally
+// Bar pill for io.github.knutsi.yr: a theme-tinted Nerd Font glyph (optionally
 // followed by the temperature) that opens the detail popup in Panel.qml.
 //
 //   left click    toggle the popup
@@ -10,7 +10,7 @@ import qs.Ui
 //   right click   send the current conditions as a desktop notification
 BarWidget {
   id: root
-  moduleName: "knutsi.weather-yr"
+  moduleName: "io.github.knutsi.yr"
 
   readonly property var panel: panelLoader.item
   readonly property string barFormat: String(setting("barFormat", "icon-temp"))

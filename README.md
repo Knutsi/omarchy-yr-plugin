@@ -10,7 +10,7 @@ all from **MET Norway's** Locationforecast API, the same data that powers
 
 ![Bar pill](docs/bar.png)
 
-![Popup: current weather, hourly graph with rain, four days, tekstvarsel, settings](docs/popup.png)
+![Popup: current weather, hourly graph with rain, four days, tekstvarsel, settings](preview.png)
 
 ![Search view: Open-Meteo and Kartverket matches, GPS button, back to automatic location](docs/search.png)
 
@@ -31,7 +31,7 @@ The popup, top to bottom:
    of the whole popup), the tekstvarsel toggle, the MET attribution and the
    "updated HH:MM" stamp (click it to reload).
 
-Plugin id: `knutsi.weather-yr`. Requires Omarchy 4.0 or newer (the
+Plugin id: `io.github.knutsi.yr`. Requires Omarchy 4.0 or newer (the
 Quickshell-based shell with third-party plugin support).
 
 ## Install
@@ -44,22 +44,22 @@ omarchy plugin add https://github.com/Knutsi/omarchy-yr-plugin.git --enable
 specific:
 
 ```bash
-omarchy bar put knutsi.weather-yr --after omarchy.clock
-omarchy bar move knutsi.weather-yr --section right --index 0
+omarchy bar put io.github.knutsi.yr --after omarchy.clock
+omarchy bar move io.github.knutsi.yr --section right --index 0
 ```
 
 It can live next to the stock `omarchy.weather` pill or replace it
 (`omarchy bar put omarchy.weather` brings the stock one back).
 
-Update later with `omarchy plugin update knutsi.weather-yr`.
+Update later with `omarchy plugin update io.github.knutsi.yr`.
 
 ### Uninstall
 
 ```bash
-omarchy plugin remove knutsi.weather-yr
+omarchy plugin remove io.github.knutsi.yr
 ```
 
-That deletes `~/.config/omarchy/plugins/knutsi.weather-yr` and the bar entry.
+That deletes `~/.config/omarchy/plugins/io.github.knutsi.yr` and the bar entry.
 The plugin keeps no other state of its own: the shared location file
 `~/.local/state/omarchy/settings/weather.json` belongs to Omarchy's stock
 weather widget (clear it with `omarchy-weather-location --clear`), and its
@@ -99,13 +99,13 @@ Network services used at runtime (all HTTPS, no keys):
 IPC, e.g. for keybindings:
 
 ```bash
-omarchy-shell shell toggle knutsi.weather-yr      # open/close the popup
-omarchy-shell knutsi.weather-yr refresh           # force refresh
-omarchy-shell knutsi.weather-yr edit              # open with the location search focused
-omarchy-shell knutsi.weather-yr toggleUnit        # °C → °F → K → °C
-omarchy-shell knutsi.weather-yr unit imperial     # set a unit directly
-omarchy-shell knutsi.weather-yr locate            # GPS fix via GeoClue (if available)
-omarchy-shell knutsi.weather-yr textForecast false  # hide/show the tekstvarsel
+omarchy-shell shell toggle io.github.knutsi.yr      # open/close the popup
+omarchy-shell io.github.knutsi.yr refresh           # force refresh
+omarchy-shell io.github.knutsi.yr edit              # open with the location search focused
+omarchy-shell io.github.knutsi.yr toggleUnit        # °C → °F → K → °C
+omarchy-shell io.github.knutsi.yr unit imperial     # set a unit directly
+omarchy-shell io.github.knutsi.yr locate            # GPS fix via GeoClue (if available)
+omarchy-shell io.github.knutsi.yr textForecast false  # hide/show the tekstvarsel
 ```
 
 ## Location
@@ -198,14 +198,14 @@ set with `omarchy bar set`:
 | `unit` | `metric` | `metric` (°C, m/s, mm), `imperial` (°F, mph, in) or `kelvin` (K, m/s, mm). Always metric unless you change it — the system locale is deliberately ignored. |
 | `barFormat` | `icon-temp` | `icon-temp` shows glyph + temperature; `icon` shows only the glyph. |
 | `graphHours` | `24` | Hours in the hour-by-hour graph (6–48; MET's hourly data runs ~60 h ahead). |
-| `textForecast` | `true` | Show the tekstvarsel section (set with `--json`: `omarchy bar set knutsi.weather-yr textForecast false --json`). |
+| `textForecast` | `true` | Show the tekstvarsel section (set with `--json`: `omarchy bar set io.github.knutsi.yr textForecast false --json`). |
 | `textForecastArea` | *(by location)* | Force a text-forecast region, e.g. `Fjellet i Sør-Norge` — the mountain region overlaps the lowland ones and the smallest match wins by default. |
 
 ```bash
-omarchy bar set knutsi.weather-yr refreshMinutes 30
-omarchy bar set knutsi.weather-yr unit kelvin
-omarchy bar set knutsi.weather-yr barFormat icon
-omarchy bar set knutsi.weather-yr graphHours 48
+omarchy bar set io.github.knutsi.yr refreshMinutes 30
+omarchy bar set io.github.knutsi.yr unit kelvin
+omarchy bar set io.github.knutsi.yr barFormat icon
+omarchy bar set io.github.knutsi.yr graphHours 48
 ```
 
 ## How it talks to MET Norway
@@ -254,7 +254,7 @@ node --test                                   # unit tests (Node ≥ 20)
 omarchy plugin validate .                     # manifest/layout check
 ```
 
-Cloning the repo straight into `~/.config/omarchy/plugins/knutsi.weather-yr`
+Cloning the repo straight into `~/.config/omarchy/plugins/io.github.knutsi.yr`
 is the quickest dev loop. The shell notices saved files and re-registers the
 plugin, but a bar slot that is already mounted keeps its running instance
 (Omarchy 4.0.0) — run `omarchy restart shell` to see QML changes.

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "id": "knutsi.weather-yr",
+  "id": "io.github.knutsi.yr",
   "name": "Yr.no (unofficial)",
   "version": "0.2.0",
   "author": "Knut Åbjørsbråten",
