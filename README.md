@@ -1,6 +1,8 @@
-# omarchy-yr-plugin
+# Yr.no (unofficial) — Omarchy weather plugin
 
-yr.no weather for the [Omarchy](https://omarchy.org) bar. A theme-tinted
+Unofficial yr.no weather for the [Omarchy](https://omarchy.org) bar — not
+affiliated with the Norwegian Meteorological Institute or NRK; it reads the
+same open MET Norway API that powers yr.no. A theme-tinted
 Nerd Font glyph and the temperature in the bar, with a popup showing the
 current conditions, a yr-style hour-by-hour graph, and a four-day forecast —
 all from **MET Norway's** Locationforecast API, the same data that powers
@@ -8,9 +10,9 @@ all from **MET Norway's** Locationforecast API, the same data that powers
 
 ![Bar pill](docs/bar.png)
 
-![Popup: current weather, warning, hourly graph, four days, tekstvarsel, settings](docs/popup.png)
+![Popup: current weather, hourly graph with rain, four days, tekstvarsel, settings](docs/popup.png)
 
-![Search view with Kartverket and OpenStreetMap matches](docs/search.png)
+![Search view: Open-Meteo and Kartverket matches, GPS button, back to automatic location](docs/search.png)
 
 The popup, top to bottom:
 
@@ -49,8 +51,37 @@ omarchy bar move knutsi.weather-yr --section right --index 0
 It can live next to the stock `omarchy.weather` pill or replace it
 (`omarchy bar put omarchy.weather` brings the stock one back).
 
-Update later with `omarchy plugin update knutsi.weather-yr`; remove with
-`omarchy plugin remove knutsi.weather-yr`.
+Update later with `omarchy plugin update knutsi.weather-yr`.
+
+### Uninstall
+
+```bash
+omarchy plugin remove knutsi.weather-yr
+```
+
+That deletes `~/.config/omarchy/plugins/knutsi.weather-yr` and the bar entry.
+The plugin keeps no other state of its own: the shared location file
+`~/.local/state/omarchy/settings/weather.json` belongs to Omarchy's stock
+weather widget (clear it with `omarchy-weather-location --clear`), and its
+settings live on the widget's entry in `~/.config/omarchy/shell.json`.
+
+### Dependencies
+
+Everything it needs ships with Omarchy: `curl`, `sh`, `timeout`, `grep`,
+`pgrep` and the Quickshell shell itself. No packages are installed, no
+privileges are requested, and nothing outside the user's own config/state
+files is written.
+
+Optional, user-installed: [`geoclue`](https://archlinux.org/packages/extra/x86_64/geoclue/)
+enables the GPS button (see below). The plugin only *detects* it; installing
+it is your decision and command.
+
+Network services used at runtime (all HTTPS, no keys):
+[api.met.no](https://api.met.no/) (forecast, warnings, tekstvarsel),
+[geocoding-api.open-meteo.com](https://open-meteo.com/en/docs/geocoding-api),
+[api.kartverket.no](https://api.kartverket.no/stedsnavn/v1/),
+[photon.komoot.io](https://photon.komoot.io), and for IP-based auto-detect
+[ipwho.is](https://ipwho.is) / [get.geojs.io](https://www.geojs.io).
 
 ## Using it
 
