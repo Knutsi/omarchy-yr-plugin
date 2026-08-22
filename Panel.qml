@@ -137,6 +137,7 @@ Panel {
             spacing: Style.space(12)
 
             Text {
+              textFormat: Text.PlainText
               visible: !root.ready
               anchors.horizontalCenter: parent.horizontalCenter
               text: "Starting the weather service…"
@@ -176,6 +177,7 @@ Panel {
             }
 
             Text {
+              textFormat: Text.PlainText
               visible: root.ready && !root.service.weather.current
               anchors.horizontalCenter: parent.horizontalCenter
               text: !root.ready ? ""
@@ -197,6 +199,7 @@ Panel {
               spacing: Style.space(4)
 
               PanelSectionHeader {
+                textFormat: Text.PlainText
                 anchors.left: parent.left
                 anchors.leftMargin: root.gutter
                 text: "NEXT " + (root.ready ? root.service.weather.hourlyPoints.length : 0) + " HOURS"
@@ -222,6 +225,7 @@ Panel {
               spacing: Style.space(8)
 
               PanelSectionHeader {
+                textFormat: Text.PlainText
                 anchors.left: parent.left
                 anchors.leftMargin: root.gutter
                 text: "NEXT " + (root.ready ? root.service.weather.forecastDays.length : 0) + " DAYS"

@@ -18,7 +18,7 @@
 // the User-Agent, round coordinates to 4 decimals, poll at most every
 // 10 minutes, revalidate with If-Modified-Since, credit "MET Norway".
 
-var VERSION = "0.3.2"
+var VERSION = "0.3.3"
 var USER_AGENT = "omarchy-yr-plugin/" + VERSION + " github.com/Knutsi/omarchy-yr-plugin"
 var ATTRIBUTION = "Data from MET Norway"
 
@@ -52,6 +52,26 @@ var MAX_BYTES_MET = 2097152        // 2 MiB — forecast, alerts, text forecast
 
 function responseTooLarge(raw, maxBytes) {
   return String(raw || "").length > maxBytes
+}
+
+// Every string that arrived from outside (HTTP bodies, files) and may be
+// shown goes through here, in the parser that creates it. QtQuick's Text
+// defaults to AutoText, which renders anything that looks like markup as
+// StyledText — <img src> included, i.e. a resource load from the shell — and
+// the shell-owned sinks this plugin feeds (bar tooltip, notifications) cannot
+// be switched to PlainText from here. So angle brackets never survive parsing
+// (escaping is no use: an un-triggered AutoText shows "&lt;" literally).
+// Qt's detection can also trip on a literal "&lt;", but with no "<" left the
+// only effect is entity decoding — no tag, link or image is reachable.
+// Control characters are dropped (newlines kept for multi-paragraph
+// warnings), and no single field can wreck the layout.
+var MAX_TEXT_CHARS = 4000
+
+function plainText(value) {
+  return String(value === undefined || value === null ? "" : value)
+    .replace(/[<>]/g, "")
+    .replace(/[\u0000-\u0008\u000B-\u001F\u007F-\u009F]/g, "")
+    .slice(0, MAX_TEXT_CHARS)
 }
 
 function num(value) {
@@ -191,7 +211,7 @@ function parseLocationFile(raw) {
     var longitude = parseFloat(data.longitude)
     var hasCoordinates = !isNaN(latitude) && !isNaN(longitude)
     return {
-      name: typeof data.name === "string" ? data.name.replace(/^\s+|\s+$/g, "") : "",
+      name: typeof data.name === "string" ? plainText(data.name).replace(/^\s+|\s+$/g, "") : "",
       latitude: hasCoordinates ? latitude : null,
       longitude: hasCoordinates ? longitude : null
     }
@@ -231,7 +251,7 @@ function parseIpLocation(raw) {
     var longitude = parseFloat(data.longitude)
     if (isNaN(latitude) || isNaN(longitude)) return unset
     var name = data.city || data.region || data.country || ""
-    return { name: String(name), latitude: latitude, longitude: longitude }
+    return { name: plainText(name), latitude: latitude, longitude: longitude }
   } catch (e) {
     return unset
   }
@@ -299,7 +319,7 @@ function parseOpenMeteoResults(raw) {
       var r = results[i]
       if (!r || !r.name || r.latitude === undefined || r.longitude === undefined) continue
       var region = [r.admin1, r.country].filter(function(part) { return !!part }).join(", ")
-      out.push({ name: String(r.name), description: region, latitude: r.latitude, longitude: r.longitude, source: "open-meteo" })
+      out.push({ name: plainText(r.name), description: plainText(region), latitude: r.latitude, longitude: r.longitude, source: "open-meteo" })
     }
     return out
   } catch (e) {
@@ -321,7 +341,7 @@ function parseKartverketResults(raw, query) {
     for (var i = 0; i < rows.length; i++) {
       var r = rows[i]
       if (!r || !r["skrivemåte"] || !r.representasjonspunkt) continue
-      var name = String(r["skrivemåte"])
+      var name = plainText(r["skrivemåte"])
       if (prefix && normalizeName(name).indexOf(prefix) !== 0) continue
       var type = String(r.navneobjekttype || "")
       if (KARTVERKET_SKIP_TYPES.test(type)) continue
@@ -331,7 +351,7 @@ function parseKartverketResults(raw, query) {
       var kommune = r.kommuner && r.kommuner[0] ? r.kommuner[0].kommunenavn : ""
       var fylke = r.fylker && r.fylker[0] ? r.fylker[0].fylkesnavn : ""
       var place = [kommune, fylke].filter(function(part) { return !!part }).join(", ")
-      out.push({ name: name, description: [place, type].filter(function(part) { return !!part }).join("  ·  "), latitude: lat, longitude: lon, source: "kartverket" })
+      out.push({ name: name, description: plainText([place, type].filter(function(part) { return !!part }).join("  ·  ")), latitude: lat, longitude: lon, source: "kartverket" })
     }
     return out
   } catch (e) {
@@ -350,7 +370,7 @@ function photonDescription(props) {
   if (props.country) parts.push(props.country)
   var place = parts.join(", ")
   var kind = props.osm_value ? String(props.osm_value).replace(/_/g, " ") : ""
-  return [place, kind].filter(function(part) { return !!part }).join("  ·  ")
+  return plainText([place, kind].filter(function(part) { return !!part }).join("  ·  "))
 }
 
 function parsePhotonResults(raw) {
@@ -367,7 +387,7 @@ function parsePhotonResults(raw) {
       if (PHOTON_SKIP_KEYS.test(String(props.osm_key || "")) || String(props.osm_value || "") === "parking") continue
       var lat = num(coords[1]), lon = num(coords[0])
       if (lat === null || lon === null) continue
-      out.push({ name: String(props.name), description: photonDescription(props), latitude: lat, longitude: lon, source: "photon" })
+      out.push({ name: plainText(props.name), description: photonDescription(props), latitude: lat, longitude: lon, source: "photon" })
     }
     return out
   } catch (e) {
@@ -449,7 +469,8 @@ function parsePhotonReverse(raw) {
     if (!props) return null
     var name = props.name || props.city || props.county || props.state || props.country || ""
     if (!name) return null
-    return { name: String(name), description: photonDescription(props), countryCode: String(props.countrycode || "").toUpperCase() }
+    var countryCode = String(props.countrycode || "").toUpperCase()
+    return { name: plainText(name), description: photonDescription(props), countryCode: /^[A-Z]{2}$/.test(countryCode) ? countryCode : "" }
   } catch (e) {
     return null
   }
@@ -473,7 +494,7 @@ function parseKartverketPoint(raw) {
       var name = r.stedsnavn && r.stedsnavn[0] ? r.stedsnavn[0]["skrivemåte"] : ""
       if (!name) continue
       var dist = num(r.meterFraPunkt)
-      if (best === null || (dist !== null && dist < best.dist)) best = { name: String(name), dist: dist === null ? Infinity : dist }
+      if (best === null || (dist !== null && dist < best.dist)) best = { name: plainText(name), dist: dist === null ? Infinity : dist }
     }
     return best ? best.name : ""
   } catch (e) {
@@ -751,7 +772,8 @@ function symbolLabel(code) {
   var fixed = { clearsky: "Clear sky", fair: "Fair", partlycloudy: "Partly cloudy", cloudy: "Cloudy", fog: "Fog" }
   if (fixed[base]) return fixed[base]
   var m = /^(light|heavy)?(rain|sleet|snow)(showers)?(andthunder)?$/.exec(base)
-  if (!m) return base ? base.replace(/_/g, " ") : ""
+  // An id outside MET's vocabulary is shown only if it is shaped like one.
+  if (!m) return /^[a-z_]{1,64}$/.test(base) ? base.replace(/_/g, " ") : ""
   var words = []
   if (m[1]) words.push(m[1])
   words.push(m[2])
@@ -973,7 +995,7 @@ function parseTextForecast(body) {
       var interval = f.when && f.when.interval ? f.when.interval : []
       var ring = f.geometry && f.geometry.type === "Polygon" && f.geometry.coordinates ? f.geometry.coordinates[0] : null
       if (!ring || !props.text) continue
-      out.push({ area: String(props.area || props.name || ""), text: String(props.text), title: String(props.title || ""),
+      out.push({ area: plainText(props.area || props.name || ""), text: plainText(props.text), title: plainText(props.title || ""),
                  start: Date.parse(interval[0]), end: Date.parse(interval[1]), ring: ring })
     }
     return out.length ? out : null
@@ -1020,7 +1042,7 @@ function textForecastArea(features, latitude, longitude) {
 // an unknown override falls back to the point's own region).
 function textForecastFor(features, latitude, longitude, nowMs, areaOverride) {
   if (!features || !features.length) return null
-  var area = String(areaOverride || "").replace(/^\s+|\s+$/g, "")
+  var area = plainText(areaOverride).replace(/^\s+|\s+$/g, "")
   var known = false
   for (var k = 0; area && k < features.length; k++) if (features[k].area === area) { known = true; break }
   if (!known) area = textForecastArea(features, latitude, longitude)
@@ -1064,16 +1086,16 @@ function parseAlerts(body) {
         level = m ? m[1].toLowerCase() : "yellow"
       }
       out.push({
-        id: String(props.id || (props.event || "") + ":" + (interval[0] || "")),
-        event: String(props.event || ""),
-        name: String(props.eventAwarenessName || props.event || "Warning"),
+        id: plainText(props.id || (props.event || "") + ":" + (interval[0] || "")),
+        event: plainText(props.event || ""),
+        name: plainText(props.eventAwarenessName || props.event || "Warning"),
         level: level,
         levelLabel: ALERT_LEVEL_LABELS[level] || level,
-        severity: String(props.severity || ""),
-        area: String(props.area || ""),
-        description: String(props.description || ""),
-        instruction: String(props.instruction || ""),
-        consequences: String(props.consequences || ""),
+        severity: plainText(props.severity || ""),
+        area: plainText(props.area || ""),
+        description: plainText(props.description || ""),
+        instruction: plainText(props.instruction || ""),
+        consequences: plainText(props.consequences || ""),
         start: Date.parse(interval[0]),
         end: Date.parse(interval[1])
       })
@@ -1102,6 +1124,7 @@ if (typeof module !== "undefined") {
     FORCED_REFRESH_FLOOR_MS: FORCED_REFRESH_FLOOR_MS, RETRY_LIMIT: RETRY_LIMIT, RETRY_DELAY_MS: RETRY_DELAY_MS,
     TEXTFORECAST_INTERVAL_MS: TEXTFORECAST_INTERVAL_MS, IP_LOCATION_URLS: IP_LOCATION_URLS,
     MAX_BYTES_LOOKUP: MAX_BYTES_LOOKUP, MAX_BYTES_MET: MAX_BYTES_MET, responseTooLarge: responseTooLarge,
+    MAX_TEXT_CHARS: MAX_TEXT_CHARS, plainText: plainText,
     GEOCLUE_PROBE_COMMAND: GEOCLUE_PROBE_COMMAND, TEXTFORECAST_URL: TEXTFORECAST_URL, GLYPH_UNAVAILABLE: GLYPH_UNAVAILABLE,
     refreshMinutes: refreshMinutes, graphHours: graphHours, settingBool: settingBool,
     // units and formatting

@@ -75,6 +75,7 @@ Item {
     spacing: Style.space(6)
 
     Text {
+      textFormat: Text.PlainText
       text: Model.ATTRIBUTION
       color: root.faded
       font.family: root.fontFamily
@@ -82,6 +83,7 @@ Item {
     }
     // Clicking the stamp forces a reload (rate-limited to one per 10 s).
     Text {
+      textFormat: Text.PlainText
       visible: root.weather.updatedText !== "" || root.weather.fetchError !== ""
       text: "·  " + (root.weather.updatedText !== "" ? "updated " + root.weather.updatedText : "not updated")
         + (root.weather.busy ? "  󰦖" : "")

@@ -36,6 +36,7 @@ Item {
       spacing: Style.space(16)
 
       Text {
+        textFormat: Text.PlainText
         anchors.verticalCenter: parent.verticalCenter
         anchors.verticalCenterOffset: Style.space(5)
         text: root.weather.glyph || "—"
@@ -50,6 +51,7 @@ Item {
 
         Text {
           id: tempBig
+          textFormat: Text.PlainText
           text: root.weather.temperatureValue || "—"
           color: root.foreground
           font.family: root.fontFamily
@@ -58,6 +60,7 @@ Item {
         }
 
         Text {
+          textFormat: Text.PlainText
           text: root.weather.current ? root.weather.tempUnit : ""
           color: unitHover.hovered ? Color.accent : root.foreground
           font.family: root.fontFamily
@@ -72,6 +75,7 @@ Item {
     }
 
     Text {
+      textFormat: Text.PlainText
       visible: root.weather.conditionText !== ""
       text: root.weather.conditionText
       color: root.foreground
@@ -93,6 +97,7 @@ Item {
       spacing: Style.space(6)
 
       Text {
+        textFormat: Text.PlainText
         text: "󰍎"   // nf-md-map_marker
         color: root.muted
         font.family: root.fontFamily
@@ -100,6 +105,7 @@ Item {
         anchors.verticalCenter: parent.verticalCenter
       }
       Text {
+        textFormat: Text.PlainText
         text: (root.location.displayName || "Set location").toUpperCase()
         color: locationHover.hovered ? root.foreground : Qt.darker(root.foreground, 1.4)
         font.family: root.fontFamily
@@ -149,6 +155,7 @@ Item {
           required property string modelData
           spacing: Style.space(5)
           Text {
+            textFormat: Text.PlainText
             text: modelData
             color: root.muted
             font.family: root.fontFamily
@@ -156,6 +163,7 @@ Item {
             font.letterSpacing: 1
           }
           Text {
+            textFormat: Text.PlainText
             text: (modelData === "WIND" ? root.weather.windText
               : modelData === "HUMID" ? root.weather.humidityText
               : modelData === "SUNRISE" ? root.weather.sunriseText

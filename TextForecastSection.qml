@@ -20,6 +20,7 @@ Column {
   visible: !!report
 
   PanelSectionHeader {
+    textFormat: Text.PlainText
     anchors.left: parent.left
     anchors.leftMargin: root.gutter
     text: "TEKSTVARSEL  ·  " + (root.report ? root.report.area.toUpperCase() : "")
@@ -48,6 +49,7 @@ Column {
         spacing: Style.space(6)
 
         Text {
+          textFormat: Text.PlainText
           width: parent.width
           text: root.report ? root.report.today.text : ""
           color: root.foreground
@@ -57,6 +59,7 @@ Column {
         }
 
         PanelSectionHeader {
+          textFormat: Text.PlainText
           visible: !!(root.report && root.report.tomorrow)
           text: "TOMORROW"
           foreground: root.foreground
@@ -64,6 +67,7 @@ Column {
         }
 
         Text {
+          textFormat: Text.PlainText
           visible: !!(root.report && root.report.tomorrow)
           width: parent.width
           text: root.report && root.report.tomorrow ? root.report.tomorrow.text : ""

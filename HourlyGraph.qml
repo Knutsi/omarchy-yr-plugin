@@ -38,6 +38,7 @@ Item {
     model: root.count
 
     Text {
+      textFormat: Text.PlainText
       required property int index
       visible: index % root.symbolStep === 0
       x: root.columnCenter(index) - width / 2
@@ -175,6 +176,7 @@ Item {
     model: root.count
 
     Text {
+      textFormat: Text.PlainText
       required property int index
       visible: index % root.labelStep === 0
       x: root.columnCenter(index) - width / 2
