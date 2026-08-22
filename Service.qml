@@ -1,4 +1,5 @@
 import QtQuick
+import Quickshell
 import Quickshell.Io
 import "Model.js" as Model
 
@@ -43,9 +44,7 @@ Item {
   property var settingsQueue: []
 
   function setSetting(key, value, asJson) {
-    var argv = ["omarchy", "bar", "set", pluginId, key, String(value)]
-    if (asJson) argv.push("--json")
-    settingsQueue = settingsQueue.concat([{ key: key, argv: argv }])
+    settingsQueue = settingsQueue.concat([{ key: key, argv: Model.settingCommand(pluginId, key, value, asJson) }])
     pumpSettings()
   }
 
@@ -59,6 +58,22 @@ Item {
   function setUnit(name) { setSetting("unit", Model.unitSystem(name), false) }
   function toggleUnit() { setUnit(Model.nextUnit(weatherService.unit)) }
   function setTextForecast(enabled) { setSetting("textForecast", enabled ? "true" : "false", true) }
+
+  // ---- Saved places (pinned favourites + the latest searches) live on the
+  //      same entry, as an undeclared `places` key, and round-trip the same
+  //      way: write through the CLI, read back from `settings`.
+  readonly property var places: Model.parsePlaces(settings.places)
+  readonly property bool canPin: Model.canPin(places)
+  function savePlaces(list) { setSetting("places", JSON.stringify(list), true) }
+  function rememberPlace(place) { savePlaces(Model.rememberPlace(places, place)) }
+  function togglePin(place) { savePlaces(Model.togglePin(places, place)) }
+
+  // ---- The same forecast on yr.no, for the location in use. The URL is
+  //      numbers and literals only, and it is launched as argv (no shell).
+  function openSite() {
+    var cmd = Model.browserCommand(Model.yrUrl(locationService.effective.latitude, locationService.effective.longitude, Qt.locale().name))
+    if (cmd) Quickshell.execDetached(cmd)
+  }
 
   CurlRequest {
     id: settingsRequest

@@ -1,6 +1,6 @@
 import { test } from "node:test"
 import assert from "node:assert/strict"
-import { readFileSync } from "node:fs"
+import { readFileSync, readdirSync } from "node:fs"
 import { Model } from "./helpers/load.mjs"
 
 const manifest = JSON.parse(readFileSync(new URL("../manifest.json", import.meta.url), "utf8"))
@@ -58,6 +58,42 @@ test("every curl invocation carries a time bound and a size ceiling", () => {
     assert.ok(parseFloat(argv[argv.indexOf("--max-time") + 1]) > 0, "time bound: " + cmd)
     const size = parseInt(argv[argv.indexOf("--max-filesize") + 1], 10)
     assert.ok(size > 0 && size <= Model.MAX_BYTES_MET, "size ceiling: " + cmd)
+  }
+})
+
+test("every child process is an argv array from a Model.js builder, bounded in time", () => {
+  // Tripwire (CLAUDE.md "Engineering invariants"): no QML file builds a
+  // command line; nothing goes through bar.run / bash -c; every helper the
+  // plugin waits for runs under coreutils timeout.
+  const dir = new URL("../", import.meta.url)
+  for (const file of readdirSync(dir).filter(f => f.endsWith(".qml"))) {
+    const qml = readFileSync(new URL(file, dir), "utf8")
+    assert.ok(!/\bbar\.run\(|\bUtil\.execDetached\(|shellQuote\(|"bash"|"sh",\s*"-c"/.test(qml), file + ": builds a shell command line")
+    assert.ok(!/\[\s*"(omarchy|omarchy-[a-z-]+|curl|timeout|sh)"/.test(qml), file + ": argv literal outside Model.js")
+  }
+  const source = readFileSync(new URL("../Model.js", import.meta.url), "utf8")
+  assert.equal((source.match(/\["omarchy-launch-browser"/g) || []).length, 1)
+  assert.equal((source.match(/\["omarchy-notification-send"/g) || []).length, 1)
+  assert.equal((source.match(/\["timeout"/g) || []).length, 4, "settingCommand, persistCommand, clearLocationCommand, GEOCLUE_PROBE_COMMAND")
+
+  const timed = [
+    Model.settingCommand("io.github.knutsi.yr", "unit", "metric", false),
+    Model.settingCommand("io.github.knutsi.yr", "places", "[]", true),
+    Model.persistCommand("Oslo", 59.91273, 10.74609),
+    Model.clearLocationCommand(),
+    Model.GEOCLUE_PROBE_COMMAND
+  ]
+  for (const argv of timed) {
+    assert.equal(argv[0], "timeout", argv.join(" "))
+    assert.equal(parseInt(argv[1], 10), Model.CHILD_TIMEOUT_S)
+  }
+  assert.ok(Model.whereAmICommand()[2].startsWith("timeout "), "where-am-i has its own timeout inside sh -c")
+  // A positional that starts with "-" would be read as an option by the helper.
+  const hostile = ["--exec rm -rf ~", "-g x", " - -x", "--private"]
+  for (const h of hostile) {
+    for (const argv of [Model.persistCommand(h, 1, 2), Model.notificationCommand("", h, h)]) {
+      for (const arg of argv.slice(argv.indexOf("--set") === -1 ? 3 : 4)) assert.ok(!arg.startsWith("-") || arg === "--set", argv.join(" | "))
+    }
   }
 })
 

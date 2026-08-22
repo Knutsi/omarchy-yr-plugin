@@ -16,6 +16,13 @@ test("all 83 MET symbol codes map to a glyph and a label", () => {
   assert.equal(Model.symbolLabel("heavysnowshowers_polartwilight"), "Heavy snow showers")
   assert.equal(Model.symbolLabel("clearsky_night"), "Clear sky")
   assert.equal(Model.symbolLabel(""), "")
+  // Table lookups keyed by a MET string must not walk the prototype chain.
+  for (const code of ["constructor_day", "__proto___night", "toString_day", "valueOf", "hasOwnProperty_polartwilight"]) {
+    const label = Model.symbolLabel(code)
+    assert.equal(typeof label, "string", code)
+    assert.ok(!/[<>(){}]/.test(label) && !/native code/.test(label), code + " → " + label)
+    assert.equal(Model.iconForSymbol(code).length, 1)
+  }
 })
 
 test("day/night variants differ; polar twilight renders as day; unknown falls back", () => {

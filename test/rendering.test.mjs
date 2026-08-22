@@ -101,7 +101,8 @@ test("no parser lets markup or control characters through to a rendered string",
     ["parsePhotonReverse", "photon-reverse.json", raw => Model.parsePhotonReverse(raw), r => r && r.name.length > 0],
     ["parseKartverketPoint", "kartverket-punkt.json", raw => Model.parseKartverketPoint(raw), r => r.length > 0],
     ["parseIpLocation", JSON.stringify(ipBody), raw => Model.parseIpLocation(raw), r => r.latitude !== null],
-    ["parseLocationFile", JSON.stringify(weatherJson), raw => Model.parseLocationFile(raw), r => r.latitude !== null]
+    ["parseLocationFile", JSON.stringify(weatherJson), raw => Model.parseLocationFile(raw), r => r.latitude !== null],
+    ["parsePlaces", JSON.stringify([{ name: "Oslo", description: "Oslo, Norway", latitude: 59.91, longitude: 10.75, pinned: true }]), raw => Model.parsePlaces(raw), r => r.length === 1]
   ]
   for (const [label, body, parse, populated] of probes) {
     const clean = body.endsWith(".json") ? fixture(body) : body
@@ -110,6 +111,11 @@ test("no parser lets markup or control characters through to a rendered string",
       assert.ok(populated(result), `${label}: tainted body was rejected outright, so nothing was checked`)
       assertClean(result, label)
     }
+  }
+
+  // GeoClue's stdout is a process, not HTTP, but the same rule applies.
+  for (const payload of PAYLOADS) {
+    assertClean(Model.parseWhereAmI("Latitude: 1°\nLongitude: 2°\nAccuracy: 5 meters\nDescription: " + payload + "\n"), "parseWhereAmI")
   }
 
   // The text-forecast override comes from settings and lands in the same header.
@@ -146,5 +152,5 @@ test("every parser that yields a rendered string calls plainText (chokepoint cou
   // was added, wrap its strings and raise the floor.
   const source = readFileSync(new URL("../Model.js", import.meta.url), "utf8")
   const calls = (source.match(/\bplainText\(/g) || []).length
-  assert.ok(calls >= 22, `plainText( appears ${calls} times in Model.js; expected at least 22`)
+  assert.ok(calls >= 27, `plainText( appears ${calls} times in Model.js; expected at least 27`)
 })

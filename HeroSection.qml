@@ -16,6 +16,7 @@ Item {
 
   signal unitTapped()
   signal locationTapped()
+  signal siteTapped()
 
   readonly property var weather: service.weather
   readonly property var location: service.location
@@ -112,8 +113,8 @@ Item {
         font.pixelSize: Style.font.body
         font.letterSpacing: 1
         anchors.verticalCenter: parent.verticalCenter
-        // Leave room for the two buttons; long names are elided.
-        width: Math.min(implicitWidth, right.width - Style.space(90))
+        // Leave room for the three buttons; long names are elided.
+        width: Math.min(implicitWidth, right.width - Style.space(120))
         elide: Text.ElideRight
 
         TapHandler { onTapped: root.locationTapped() }
@@ -140,6 +141,18 @@ Item {
         fontSize: Style.font.bodySmall
         opacity: root.location.gpsState === "ok" ? 1 : 0.45
         onClicked: root.location.locateWithGps()
+      }
+      // The same forecast on yr.no, in the default browser.
+      PanelActionButton {
+        anchors.verticalCenter: parent.verticalCenter
+        iconText: "󰖟"   // nf-md-web
+        tooltipText: "Open on yr.no"
+        enabled: root.location.hasLocation
+        foreground: root.location.hasLocation ? root.foreground : Qt.darker(root.foreground, 1.4)
+        fontFamily: root.fontFamily
+        fontSize: Style.font.bodySmall
+        opacity: root.location.hasLocation ? 1 : 0.45
+        onClicked: root.siteTapped()
       }
     }
 

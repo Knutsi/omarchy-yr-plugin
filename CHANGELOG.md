@@ -5,6 +5,34 @@ All notable changes to this plugin are documented here. The format follows
 [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
+### Added
+- Saved places: the search box now opens empty with your last five searches
+  listed under it, and up to five places can be pinned to the top. Stored
+  as a `places` array on the widget's `shell.json` entry, the way
+  Omarchy's own widgets keep small state.
+- A globe button next to the location name opens the same forecast on
+  yr.no (Norwegian site for a Norwegian locale). The URL is built from the
+  rounded coordinates and fixed text only, and opened through
+  `omarchy-launch-browser` as an argument list.
+### Changed
+- Enter in an empty search box no longer switches to automatic location;
+  "Use automatic location" is the only way back. Search text is capped at
+  100 characters.
+- An unknown MET symbol code is only echoed as condition text when it is
+  shaped like one.
+### Security
+- Hardening ahead of further marketplace review: temperatures outside
+  −100…70 °C are dropped before they can size the graph (one such value
+  could previously stall a paint or throw inside a binding); MET symbol
+  codes are looked up with `hasOwnProperty` (`constructor_day` used to
+  yield a function); the stored location file and GeoClue's output get the
+  same size ceiling as HTTP bodies; a `Last-Modified` value is only sent
+  back as `If-Modified-Since` when it is shaped like an HTTP date; every
+  child process is now an argument list built and tested in `Model.js`
+  (the notification used to go through a shell string), the helpers run
+  under `timeout`, and a place name or forecast text can never start with
+  a dash where a helper would read it as an option.
+- README states plainly what data leaves the machine, to whom, and when.
 
 ## [0.3.3] — 2026-08-22
 ### Security

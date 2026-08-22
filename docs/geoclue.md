@@ -35,12 +35,15 @@ time it opens, so no shell restart is needed.
 
 ## How the plugin uses it
 
-- It asks for a position **only when you press the button** — never on
-  startup or on a timer — and saves the result through
-  `omarchy-weather-location`, so the stock weather widget follows too.
+- It asks for a position **only when you press the button** (or run the
+  `locate` IPC verb yourself) — never on startup or on a timer — and saves
+  the result through `omarchy-weather-location`, so the stock weather
+  widget follows too.
 - The fix comes from `/usr/lib/geoclue-2.0/demos/where-am-i` (one process,
   one D-Bus connection, 12 s timeout); the place name comes from Photon's
-  reverse lookup, refined with Kartverket in Norway.
+  reverse lookup, refined with Kartverket in Norway — that is, the fix's
+  coordinates are sent once to photon.komoot.io and, in Norway, to
+  api.kartverket.no. Nothing else about the fix leaves the machine.
 - Where beaconDB has no Wi-Fi data, GeoClue falls back to an IP estimate;
   such coarse fixes are labelled "(approx.)" and the radius is shown.
 - The demo agent approves any app with a `.desktop` file and shows no

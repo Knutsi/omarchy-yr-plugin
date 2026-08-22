@@ -157,10 +157,13 @@ Item {
   function persist(name, latitude, longitude) {
     if (saveRequest.running) return
     saveError = ""
+    var argv = name ? Model.persistCommand(name, latitude, longitude) : Model.clearLocationCommand()
+    if (!argv) {
+      saveError = "Cannot save this place: no usable name or coordinates"
+      saveFailed(saveError)
+      return
+    }
     saveState = "saving"
-    var argv = name && latitude !== null && longitude !== null
-      ? ["omarchy-weather-location", "--set", String(name), latitude + "," + longitude]
-      : ["omarchy-weather-location", "--clear"]
     saveRequest.start(argv, name ? "set" : "clear")
   }
 

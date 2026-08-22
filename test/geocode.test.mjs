@@ -70,7 +70,11 @@ test("geocode request fan-out and commit rules", () => {
   assert.ok(three.every(r => r.command.includes("User-Agent: " + Model.USER_AGENT)))
   assert.ok(three.every(r => r.command.join(" ").includes("--max-filesize " + Model.MAX_BYTES_LOOKUP)))
   assert.equal(Model.locationCommit("Nowhere", [], 0), null, "no match → nothing to save")
-  assert.deepEqual(Model.locationCommit("", [], 0), Model.emptyLocation())
+  assert.equal(Model.locationCommit("", [], 0), null, "an empty box commits nothing — never 'back to auto' by accident")
+  assert.equal(Model.locationCommit("   ", [{ name: "A", latitude: 1, longitude: 2 }], 0), null)
+  const long = Model.geocodeRequests("Oslo" + "x".repeat(5000))
+  assert.equal(long.length, 3)
+  for (const r of long) assert.ok(r.command[r.command.length - 1].length < 400, "query is capped before it becomes a URL")
   const choices = [{ name: "A", latitude: 1, longitude: 2 }, { name: "B", latitude: 3, longitude: 4 }]
   assert.equal(Model.locationCommit("san", choices, 1).name, "B")
   assert.equal(Model.locationCommit("san", choices, 99).name, "B", "index clamped")
@@ -97,6 +101,7 @@ test("oversized lookup responses are refused, not parsed", () => {
   assert.deepEqual(Model.parseIpLocation('{"city":"Oslo","latitude":59.9,"longitude":10.7}' + pad), Model.emptyLocation())
   assert.equal(Model.parseIpLocation('{"city":"Oslo","latitude":59.9,"longitude":10.7}').name, "Oslo", "same body under the cap parses")
   assert.ok(Model.curlCommand("https://ipwho.is/").join(" ").includes("--max-filesize " + Model.MAX_BYTES_LOOKUP))
+  assert.deepEqual(Model.parseLocationFile('{"name":"Oslo","latitude":59.9,"longitude":10.7}' + pad), Model.emptyLocation(), "weather.json is a file: same ceiling")
 })
 
 test("reverse lookup names a GPS fix", () => {
