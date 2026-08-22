@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "io.github.knutsi.yr",
   "name": "Yr.no (unofficial)",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "author": "Knut Åbjørsbråten",
   "license": "MIT",
   "description": "Unofficial yr.no (MET Norway) weather: forecast, warnings, hourly graph and tekstvarsel in the bar",

@@ -209,8 +209,6 @@ Panel {
                 points: root.ready ? root.service.weather.hourlyPoints : []
                 unit: root.ready ? root.service.weather.unit : "metric"
                 foreground: root.fg
-                tempColor: Color.urgent
-                precipColor: Color.accent
                 fontFamily: root.fontFamily
               }
             }

@@ -184,10 +184,11 @@ Network services used at runtime (all HTTPS, no keys):
 ## Theme
 
 Everything is drawn with the active Omarchy theme: the bar's foreground
-colour and font for the pill and popup, `accent` for hover/selection and the
-precipitation bars, `urgent` (the theme's red) for the temperature curve.
-Warning banners use MET's own awareness colours (yellow/orange/red) on
-purpose. Glyphs come from the Nerd Fonts weather set, the same family the
+colour and font for the pill and popup, `accent` for hover/selection. The
+hourly graph — temperature curve, rain bars, axes — is painted in the
+foreground colour at different opacities rather than in `accent`/`urgent`, so
+it stays quiet even in themes with a loud accent or a bright red. Warning
+banners use MET's own awareness colours (yellow/orange/red) on purpose. Glyphs come from the Nerd Fonts weather set, the same family the
 stock weather pill uses. Switching themes restyles the widget instantly.
 
 ## Development
