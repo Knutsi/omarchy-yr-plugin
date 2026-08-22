@@ -25,6 +25,7 @@ Item {
   // is open reacts by entering the search view.
   property int editRequests: 0
   property string settingsError: ""
+  readonly property var createdAt: new Date()
 
   LocationService { id: locationService }
   WeatherService { id: weatherService; location: locationService; settings: root.settings }
@@ -82,5 +83,22 @@ Item {
     function textForecast(enabled: string): void { root.setTextForecast(Model.settingBool(enabled, true)) }
     function edit(): void { root.requestEdit() }
     function location(): string { return JSON.stringify(locationService.effective) }
+    function status(): string {
+      return JSON.stringify({
+        createdAt: root.createdAt.toISOString(),
+        location: locationService.effective,
+        locationSource: locationService.source,
+        saveState: locationService.saveState,
+        gpsState: locationService.gpsState,
+        forecastUpdatedAt: weatherService.updatedAt ? weatherService.updatedAt.toISOString() : null,
+        fetchError: weatherService.fetchError,
+        alerts: weatherService.alerts.length,
+        textArea: weatherService.textArea,
+        unit: weatherService.unit,
+        textForecast: weatherService.textForecastEnabled,
+        pendingSettings: root.settingsQueue.length,
+        settingsError: root.settingsError
+      })
+    }
   }
 }
