@@ -6,9 +6,11 @@ current conditions, a yr-style hour-by-hour graph, and a four-day forecast —
 all from **MET Norway's** Locationforecast API, the same data that powers
 [yr.no](https://www.yr.no).
 
-```
-  17°        ← bar pill (glyph + temperature; glyph only in vertical bars)
-```
+![Bar pill](docs/bar.png)
+
+![Popup: current weather, warning, hourly graph, four days, tekstvarsel, settings](docs/popup.png)
+
+![Search view with Kartverket and OpenStreetMap matches](docs/search.png)
 
 The popup, top to bottom:
 
