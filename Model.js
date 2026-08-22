@@ -53,6 +53,7 @@ var MAX_RECENT = 5              // … and the latest searches
 // multi-byte input slightly — fine for a ceiling this far above real bodies.
 var MAX_BYTES_LOOKUP = 262144      // 256 KiB — geocoders, IP lookup, reverse lookup
 var MAX_BYTES_MET = 2097152        // 2 MiB — forecast, alerts, text forecast
+var LOCATION_FILE_MAX = MAX_BYTES_LOOKUP   // weather.json: head -c cap at the source, the same cap before parsing
 
 function responseTooLarge(raw, maxBytes) {
   return String(raw || "").length > maxBytes
@@ -210,7 +211,7 @@ function dayName(dateString, formatter) {
 // it once and stores the coordinates.
 function parseLocationFile(raw) {
   var unset = { name: "", latitude: null, longitude: null }
-  if (responseTooLarge(raw, MAX_BYTES_LOOKUP)) return unset
+  if (responseTooLarge(raw, LOCATION_FILE_MAX)) return unset
   try {
     var data = JSON.parse(String(raw || ""))
     if (!data || typeof data !== "object") return unset
@@ -696,11 +697,10 @@ function persistCommand(name, latitude, longitude) {
 // finding #3). One byte more than the ceiling is requested on purpose, so an
 // oversized file still trips the parser's responseTooLarge() instead of
 // being truncated into a valid-looking prefix.
-var LOCATION_FILE_MAX = MAX_BYTES_LOOKUP
 function readFileCommand(path, maxBytes) {
   var target = String(path || "")
   if (target === "") return null
-  return ["timeout", String(CHILD_TIMEOUT_S), "head", "-c", String((maxBytes || LOCATION_FILE_MAX) + 1), target]
+  return ["timeout", String(CHILD_TIMEOUT_S), "head", "-c", String((maxBytes || LOCATION_FILE_MAX) + 1), "--", target]
 }
 
 function clearLocationCommand() {

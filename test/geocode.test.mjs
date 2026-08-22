@@ -16,7 +16,9 @@ test("location file parsing matches omarchy-weather-location", () => {
 
 test("the location file is read through a bounded process, never whole", () => {
   const cmd = Model.readFileCommand("/x/weather.json", Model.LOCATION_FILE_MAX)
-  assert.deepEqual(cmd, ["timeout", String(Model.CHILD_TIMEOUT_S), "head", "-c", String(Model.LOCATION_FILE_MAX + 1), "/x/weather.json"])
+  assert.deepEqual(cmd, ["timeout", String(Model.CHILD_TIMEOUT_S), "head", "-c", String(Model.LOCATION_FILE_MAX + 1), "--", "/x/weather.json"])
+  assert.equal(Model.LOCATION_FILE_MAX, Model.MAX_BYTES_LOOKUP, "the head cap and the parser cap are one constant")
+  assert.deepEqual(Model.parseLocationFile('{"name":"Oslo","latitude":59.9,"longitude":10.7}' + " ".repeat(Model.LOCATION_FILE_MAX)), Model.emptyLocation())
   assert.equal(Model.readFileCommand("", 10), null)
   assert.equal(Model.readFileCommand(null), null)
   assert.equal(Model.readFileCommand("/x")[4], String(Model.LOCATION_FILE_MAX + 1), "default ceiling")
@@ -34,6 +36,8 @@ test("the location file is read through a bounded process, never whole", () => {
   assert.equal(r2.code, 0)
   assert.equal(Buffer.byteLength(r2.out), Model.LOCATION_FILE_MAX + 1, "exactly one byte over the ceiling leaves the file")
   assert.deepEqual(Model.parseLocationFile(r2.out), Model.emptyLocation(), "…and the parser refuses it")
+  const dash = join(dir, "-dash.json"); writeFileSync(dash, '{"name":"Dash","latitude":1,"longitude":2}')
+  assert.equal(Model.parseLocationFile(run(Model.readFileCommand(dash, Model.LOCATION_FILE_MAX)).out).name, "Dash", "a path starting with '-' is still a path")
   const r3 = run(Model.readFileCommand(join(dir, "missing.json"), Model.LOCATION_FILE_MAX))
   assert.notEqual(r3.code, 0)
   assert.equal(r3.out, "")

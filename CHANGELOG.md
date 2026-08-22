@@ -11,7 +11,8 @@ All notable changes to this plugin are documented here. The format follows
   loads it, so an oversized file is refused before it is allocated in the
   shell rather than after (marketplace review, issue #1448, finding #3).
 - Processes whose output is unused (`omarchy bar set`,
-  `omarchy-weather-location`) run without an output collector.
+  `omarchy-weather-location`) no longer copy their output into a string
+  (they print at most one line; the bytes are still drained by Qt).
 
 ## [0.4.0] — 2026-08-22
 ### Added

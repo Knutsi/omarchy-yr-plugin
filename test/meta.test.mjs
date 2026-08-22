@@ -72,7 +72,23 @@ test("every child process is an argv array from a Model.js builder, bounded in t
     const qml = readFileSync(new URL(file, dir), "utf8")
     assert.ok(!/\bbar\.run\(|\bUtil\.execDetached\(|shellQuote\(|"bash"|"sh",\s*"-c"/.test(qml), file + ": builds a shell command line")
     assert.ok(!/\[\s*"(omarchy|omarchy-[a-z-]+|curl|timeout|sh|head|cat)"/.test(qml), file + ": argv literal outside Model.js")
-    assert.ok(!/\.(text|data)\(\)/.test(qml) || file !== "LocationService.qml", file + ": FileView.text()/data() loads a whole file — read through readFileCommand() instead")
+    assert.ok(!/\.(text|data)\(\)/.test(qml), file + ": FileView.text()/data() loads a whole file — read through readFileCommand() instead")
+    // A FileView may only watch: preload off, no load handlers, no reload of its own.
+    const opener = /\bFileView\s*\{/g
+    let m
+    while ((m = opener.exec(qml))) {
+      let depth = 0, block = ""
+      for (let i = m.index + m[0].length - 1; i < qml.length; i++) {
+        if (qml[i] === "{") depth++
+        block += qml[i]
+        if (qml[i] === "}" && --depth === 0) break
+      }
+      const line = qml.slice(0, m.index).split("\n").length
+      assert.ok(/\bpreload:\s*false\b/.test(block), file + ":" + line + ": FileView without preload: false loads the file")
+      const own = (block.match(/\bid:\s*([A-Za-z_]\w*)/) || [])[1]
+      assert.ok(!/\b(onLoaded|onLoadFailed|blockLoading|blockAllReads)\b/.test(block), file + ":" + line + ": FileView must only watch")
+      assert.ok(!/(^|[^.\w])reload\(\)/.test(block) && !(own && new RegExp("\\b" + own + "\\.reload\\(\\)").test(block)), file + ":" + line + ": a FileView must never reload itself (that loads the file)")
+    }
   }
   const source = readFileSync(new URL("../Model.js", import.meta.url), "utf8")
   assert.equal((source.match(/\["omarchy-launch-browser"/g) || []).length, 1)

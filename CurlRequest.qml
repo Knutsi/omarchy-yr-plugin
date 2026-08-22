@@ -8,9 +8,11 @@ import Quickshell.Io
 // immediately start the next request on the same object — chaining from
 // StdioCollector.onStreamFinished or straight out of onExited is not safe.
 //
-// `collect: false` attaches no collector at all: the child's stdout is
-// discarded by Quickshell instead of being buffered in the shell — for
-// commands where only the exit code matters.
+// `collect: false` attaches no collector: the output is not copied into a
+// JS string. It is NOT a ceiling — QProcess still drains the pipe into its
+// own buffer for the life of the process (measured: ~1:1 with the bytes
+// written) — so it is only for helpers that print at most a line and whose
+// exit code is all that matters. A noisy child must be bounded at the source.
 Item {
   id: root
 

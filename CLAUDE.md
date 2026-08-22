@@ -30,8 +30,12 @@ External input is hostile. Anything that enters the long-lived shell process
   through `FileView.text()`/`data()`: a `FileView` is a change watcher only
   (`preload: false`) and the bytes come through `readFileCommand()`
   (`head -c cap+1`, so an oversized file still trips the parser's ceiling
-  instead of truncating into a valid-looking prefix). A process whose output
-  is unused runs with `collect: false` (no `StdioCollector` at all);
+  instead of truncating into a valid-looking prefix). `CurlRequest`'s
+  `collect: false` is **not** a ceiling: QProcess drains a child's stdout into
+  its own buffer whether or not a collector is attached (measured ~1:1 with
+  the bytes written), so it only spares the string copy — use it for helpers
+  that print at most a line, and bound any noisy child at the source
+  (`head -c` inside a fixed script, as for `where-am-i`);
 - a time bound (`--max-time`) and bounded retries;
 - a parser that fails closed on garbage (try/catch → the empty value);
 - **plain-text rendering**: every string that may be shown is passed through
