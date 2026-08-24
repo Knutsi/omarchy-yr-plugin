@@ -8,7 +8,8 @@ import qs.Ui
 //
 // Layout, top to bottom: current weather · weather warnings · hour-by-hour
 // graph · next days · tekstvarsel (Norway) · settings and attribution.
-// "Change location" swaps the whole content for SearchView.qml.
+// "Change location" swaps the whole content for SearchView.qml, and Shift+←/→
+// pans the graph's hour cursor, which the hero then reads out.
 //
 // Popup lifecycle (open/openFromHotkey/close/toggle and the hover-reveal
 // flag) follows Omarchy's stock weather plugin so the bar's popout
@@ -92,6 +93,13 @@ Panel {
     Qt.callLater(function() { if (keyCatcher) keyCatcher.forceActiveFocus() })
   }
 
+  // The hour cursor is a reading aid, not a setting: it never survives the
+  // popup being closed (by Escape, a click outside, the pill, a popout switch
+  // or IPC — `opened` follows the controller, so all of them land here) or the
+  // search view taking the graph's place.
+  onOpenedChanged: if (!opened) graph.reset()
+  onEditingChanged: if (editing) graph.reset()
+
   // `omarchy-shell <id> edit` summons the popup, then bumps this counter.
   Connections {
     target: root.service
@@ -118,6 +126,33 @@ Panel {
       // ← / → (or h / l) switch between the pinned places.
       onMoveRequested: function(dx, dy) { if (dx !== 0 && root.service) root.service.switchPinned(dx) }
       onTabRequested: function(direction) { root.switchPanel(direction) }
+
+      // Shift+← / → pan the graph's hour cursor. PanelKeyCatcher reports
+      // arrows without their modifiers, so the modified pair has to be taken
+      // before it becomes a place switch: Keys.forwardTo targets are consulted
+      // first (QQuickKeysAttached processes forwards ahead of its own
+      // onPressed and returns early if one accepts), and anything hourPan
+      // leaves alone falls through to the catcher untouched.
+      Keys.forwardTo: [hourPan]
+
+      Item {
+        id: hourPan
+        width: 0
+        height: 0
+        // A bare Item, and a child of something visible: forwarding skips
+        // targets whose isVisible() is false, and a type with its own key
+        // handling (Flickable, a text field) would swallow the fall-through.
+
+        Keys.onPressed: function(event) {
+          // Forwarding is not gated by keyCatcher.blocked, and a text field
+          // with the cursor at position 0 ignores Left whatever the modifiers,
+          // so search-view keys reach this handler too. Hence the guard.
+          if (root.editing || !root.ready) return
+          if (!(event.modifiers & Qt.ShiftModifier)) return
+          if (event.key === Qt.Key_Left) { graph.pan(-1); event.accepted = true }
+          else if (event.key === Qt.Key_Right) { graph.pan(1); event.accepted = true }
+        }
+      }
 
       Flickable {
         id: scroll
@@ -156,6 +191,7 @@ Panel {
               foreground: root.fg
               fontFamily: root.fontFamily
               gutter: root.gutter
+              hour: graph.selectedView
               onUnitTapped: root.service.toggleUnit()
               onLocationTapped: root.startEditing()
               onSiteTapped: root.service.openSite()

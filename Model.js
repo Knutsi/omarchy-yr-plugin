@@ -1223,6 +1223,27 @@ function hourlyForecast(forecast, nowMs, hours) {
   return out
 }
 
+// The hero's read-out for one hour of the graph. Deliberately the same field
+// names WeatherService derives from currentCondition(), so the hero can bind
+// to one or the other without a branch per field. The clock time is part of
+// conditionText because the hour is only ever named while the cursor is off
+// "now"; an id outside MET's vocabulary leaves just the time, never a
+// dangling separator.
+//
+// Every field is built from the point's raw values — the glyph is looked up
+// again rather than taken from `point.icon` — so the string that reaches the
+// hero is markup-free whatever a caller put in the object.
+function hourView(point, unit) {
+  if (!point) return null
+  var label = symbolLabel(point.symbolCode)
+  var clock = formatClock(point.time)
+  return {
+    glyph: iconForSymbol(point.symbolCode),
+    temperatureValue: roundedTemp(convertTemp(point.tempC, unit)),
+    conditionText: label && clock ? clock + " · " + label : (clock || label)
+  }
+}
+
 // Round tick values between min and max — at least two, at most ~five.
 function ticksFor(min, max) {
   var steps = [100, 50, 20, 10, 5, 2, 1]
@@ -1512,7 +1533,7 @@ if (typeof module !== "undefined") {
     symbolBase: symbolBase, symbolVariant: symbolVariant, glyphFamily: glyphFamily, iconForSymbol: iconForSymbol, symbolLabel: symbolLabel,
     // daily / hourly / graph
     localDateKey: localDateKey, isFutureForecastDate: isFutureForecastDate, dailyForecast: dailyForecast,
-    hourlyForecast: hourlyForecast, niceStep: niceStep, ticksFor: ticksFor, graphScale: graphScale, samePoints: samePoints,
+    hourlyForecast: hourlyForecast, hourView: hourView, niceStep: niceStep, ticksFor: ticksFor, graphScale: graphScale, samePoints: samePoints,
     // sun
     sunTimes: sunTimes, formatSunTime: formatSunTime,
     // tekstvarsel

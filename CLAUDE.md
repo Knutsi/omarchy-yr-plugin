@@ -48,7 +48,12 @@ External input is hostile. Anything that enters the long-lived shell process
   enforces both (QML scan + tainted-fixture probe of every parser). The QML
   scan covers `Text`/`PanelSectionHeader` blocks only; a string handed to a
   shell component property (`tooltipText`, `Button.text`, …) is covered by
-  the parser probe alone, so never bind one to a raw external value;
+  the parser probe alone, so never bind one to a raw external value. A
+  *formatter* that composes a displayable string out of a data object
+  (`hourView`) counts as a parser here: probe it the same way, and build each
+  field from the object's raw values — `iconForSymbol(point.symbolCode)`, not
+  `point.icon` — so a caller cannot hand it a pre-rendered string to pass
+  through;
 - **child processes**: every argv is built by a `Model.js` builder
   (`curlCommand`, `metCommand`, `settingCommand`, `persistCommand`,
   `clearLocationCommand`, `notificationCommand`, `browserCommand`, the

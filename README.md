@@ -52,7 +52,9 @@ top to bottom:
    coloured by level; click one for the description and advice. Shown in
    English unless your locale is Norwegian.
 3. **Next N hours** — symbols, temperature curve, precipitation bars with
-   amounts, hour labels (24 h by default, 6–48 configurable).
+   amounts, hour labels (24 h by default, 6–48 configurable). Shift + ← / →
+   move a cursor along the curve and the current-weather block above reads
+   out that hour.
 4. **Next 4 days** — symbol, day, high / low.
 5. **Tekstvarsel** — MET's written forecast for the Norwegian land region
    (today and tomorrow; scrolls when long). Norway only, Norwegian only;
@@ -73,6 +75,7 @@ top to bottom:
 | Right click | Desktop notification with the current conditions |
 | Click the location name, its magnifier, or the `Location` button | Search view: the box opens empty with your saved places under it (pinned first, then the last five searches); pick one with ↑/↓ + Enter or a click, or type to search. Esc / ✕ goes back; "Use automatic location" returns to IP auto-detect |
 | ← / → (or h / l) in the popup | Switch the location to the previous / next **pinned** place (recent searches are not included) |
+| Shift + ← / → in the popup | Move an hour cursor along the hour-by-hour graph. The current-weather block reads out that hour — glyph, temperature and `HH:00 · condition`. Esc or closing the popup returns it to now |
 | Click the pin on a saved place | Pin it so it stays at the top of the list (up to five); click again to unpin. Recent searches beyond the last five fall off on their own |
 | Click the globe button | Open the same location on [yr.no](https://www.yr.no) in your default browser — the place's own page when yr's register knows it (looked up by the name in use, then by the nearest town), otherwise a coordinate page. Norwegian site for a Norwegian locale, English otherwise |
 | Click the satellite button | Locate with GPS / Wi-Fi positioning through GeoClue — see [docs/geoclue.md](docs/geoclue.md). Dimmed with an explanatory tooltip when the service is missing |

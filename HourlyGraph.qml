@@ -3,7 +3,8 @@ import qs.Commons
 import "Model.js" as Model
 
 // yr.no-style hour-by-hour graph: weather symbols along the top, a
-// temperature curve over precipitation bars, hour labels underneath.
+// temperature curve over precipitation bars, hour labels underneath, and a
+// cursor on the hour being read out (Shift+left/right in Panel.qml moves it).
 // Everything is painted in the bar foreground at varying opacity so the graph
 // stays quiet in every theme, however loud its accent or red is.
 Item {
@@ -26,12 +27,33 @@ Item {
   readonly property int labelStep: columnWidth >= Style.space(34) ? 1 : (columnWidth >= Style.space(14) ? 3 : 6)
   readonly property var axis: Model.graphScale(points, unit)
 
+  // The hour being read out. 0 is now — the state the graph is in when nobody
+  // is panning, and the dot it has always drawn on the first column. Only a
+  // panned cursor has a point and a view; "now" is the popup's own business.
+  property int selectedIndex: 0
+  readonly property bool panning: selectedIndex > 0
+  readonly property var selectedPoint: panning && selectedIndex < count ? points[selectedIndex] : null
+  readonly property var selectedView: Model.hourView(selectedPoint, unit)
+
   implicitHeight: symbolRowHeight + plotHeight + labelRowHeight
   visible: count > 1
 
   function columnCenter(i) {
     return plotLeft + columnWidth * (i + 0.5)
   }
+
+  // Clamping lives here because the graph is the only thing that knows how
+  // many hours there are: pan(0) re-clamps when a shorter forecast arrives,
+  // and an empty one lands the cursor back on 0.
+  function pan(delta) {
+    selectedIndex = Math.max(0, Math.min(count - 1, selectedIndex + delta))
+  }
+
+  function reset() {
+    selectedIndex = 0
+  }
+
+  onCountChanged: pan(0)
 
   // ---- Symbols, one per column (or every 2nd/3rd when the columns are narrow).
   Repeater {
@@ -156,10 +178,22 @@ Item {
       ctx.strokeStyle = curve
       ctx.stroke()
 
-      // "Now" marker at the first column.
+      // Cursor. Index 0 — nobody panning — is "now" and keeps the bare dot
+      // the graph has always drawn; a panned hour gets a rule down its column
+      // too. Foreground, never the accent: see the note at the top.
+      var c = Math.max(0, Math.min(n - 1, root.selectedIndex))
+      if (c > 0) {
+        var cx0 = Math.round(xs[c]) + 0.5
+        ctx.strokeStyle = Qt.rgba(fg.r, fg.g, fg.b, 0.3)
+        ctx.lineWidth = 1
+        ctx.beginPath()
+        ctx.moveTo(cx0, top)
+        ctx.lineTo(cx0, bottom)
+        ctx.stroke()
+      }
       ctx.fillStyle = curve
       ctx.beginPath()
-      ctx.arc(xs[0], ys[0], 3, 0, Math.PI * 2)
+      ctx.arc(xs[c], ys[c], c > 0 ? 4 : 3, 0, Math.PI * 2)
       ctx.fill()
     }
   }
@@ -170,6 +204,7 @@ Item {
   onWidthChanged: canvas.requestPaint()
   onPlotHeightChanged: canvas.requestPaint()
   onColumnWidthChanged: canvas.requestPaint()
+  onSelectedIndexChanged: canvas.requestPaint()
 
   // ---- Hour labels.
   Repeater {
@@ -178,13 +213,17 @@ Item {
     Text {
       textFormat: Text.PlainText
       required property int index
-      visible: index % root.labelStep === 0
+      // The panned hour is always labelled, however coarse the step, and is
+      // the one label at full strength. At rest nothing is emphasised: the
+      // dot on the first column is all "now" has ever needed.
+      visible: index % root.labelStep === 0 || (root.panning && index === root.selectedIndex)
       x: root.columnCenter(index) - width / 2
       y: root.symbolRowHeight + root.plotHeight
       height: root.labelRowHeight
       verticalAlignment: Text.AlignVCenter
       text: root.points[index] ? root.points[index].hourLabel : ""
-      color: Qt.rgba(root.foreground.r, root.foreground.g, root.foreground.b, 0.6)
+      color: root.panning && index === root.selectedIndex ? root.foreground
+        : Qt.rgba(root.foreground.r, root.foreground.g, root.foreground.b, 0.6)
       font.family: root.fontFamily
       font.pixelSize: Style.font.caption
     }

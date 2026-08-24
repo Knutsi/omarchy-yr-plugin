@@ -70,6 +70,46 @@ test("hourlyForecast starts at the current entry and stops at the 6-hourly tail"
   assert.ok(!Model.samePoints(points, Model.hourlyForecast(forecast, firstTime + 3600 * 1000, 24)))
 })
 
+test("hourView reads one hour out the way the hero reads now", () => {
+  const points = Model.hourlyForecast(forecast, firstTime, 24)
+  const point = points[3]
+
+  assert.equal(Model.hourView(null, "metric"), null, "no hour, no read-out")
+  assert.equal(Model.hourView(undefined, "metric"), null)
+
+  for (const unit of ["metric", "imperial", "kelvin"]) {
+    const view = Model.hourView(point, unit)
+    assert.equal(view.glyph, point.icon, "the same glyph the graph draws for that hour")
+    assert.equal(view.glyph.length, 1)
+    assert.equal(view.temperatureValue, Model.roundedTemp(Model.convertTemp(point.tempC, unit)), unit)
+    // The clock time leads, because a panned hour is the only time the popup
+    // names one.
+    assert.match(view.conditionText, /^[0-2][0-9]:[0-5][0-9] · \S/, unit)
+    assert.ok(view.conditionText.endsWith(Model.symbolLabel(point.symbolCode)), unit)
+  }
+  assert.notEqual(Model.hourView(point, "metric").temperatureValue,
+    Model.hourView(point, "imperial").temperatureValue, "the panned hour converts with the unit")
+
+  // A symbol id symbolLabel refuses leaves the time alone, not a dangling
+  // separator; an unparseable time leaves the label alone; neither reads as
+  // the empty line the hero already knows how to show.
+  const junk = "x".repeat(70) + "_day"
+  assert.equal(Model.symbolLabel(junk), "", "premise: this id is refused outright")
+  const nameless = Model.hourView({ ...point, symbolCode: junk }, "metric")
+  assert.match(nameless.conditionText, /^[0-2][0-9]:[0-5][0-9]$/)
+  const timeless = Model.hourView({ ...point, time: "not-a-time" }, "metric")
+  assert.equal(timeless.conditionText, Model.symbolLabel(point.symbolCode))
+  const neither = Model.hourView({ time: "not-a-time", symbolCode: junk }, "metric")
+  assert.equal(neither.conditionText, "")
+  assert.equal(neither.glyph.length, 1, "the glyph is looked up, so it is always one known character")
+  assert.equal(neither.temperatureValue, "")
+
+  // An id that names something on Object.prototype is a plain unknown id, and
+  // is read out as one — never as a function.
+  assert.equal(Model.hourView({ ...point, symbolCode: "constructor_day" }, "metric").conditionText.slice(6),
+    "· constructor")
+})
+
 test("graphScale pads the temperature range and uses round ticks in every unit", () => {
   const points = Model.hourlyForecast(forecast, firstTime, 24)
   for (const unit of ["metric", "imperial", "kelvin"]) {
