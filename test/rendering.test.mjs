@@ -133,6 +133,16 @@ test("no parser lets markup or control characters through to a rendered string",
     assert.equal(Model.symbolLabel(payload + "_day"), "")
     assert.equal(Model.iconForSymbol(payload + "_day").length, 1)
   }
+
+  // The hour cursor's read-out composes a symbol label and a clock time into
+  // one string, so it is probed like a parser even though it only formats.
+  for (const payload of PAYLOADS) {
+    const code = payload + "_day"
+    assertClean(Model.hourView({ time: "2026-08-22T10:00:00Z", tempC: 5, symbolCode: code, icon: Model.iconForSymbol(code) }, "metric"), "hourView")
+    // The glyph is looked up from the code, so even a poisoned `icon` field
+    // cannot become the rendered one.
+    assertClean(Model.hourView({ time: payload, tempC: 5, symbolCode: code, icon: payload }, "metric"), "hourView (tainted time and icon)")
+  }
   assert.equal(Model.symbolLabel("drizzle_day"), "drizzle", "a plausible new id still shows")
   assert.equal(Model.symbolLabel("a".repeat(65)), "")
 })

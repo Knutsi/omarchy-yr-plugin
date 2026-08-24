@@ -5,6 +5,15 @@ All notable changes to this plugin are documented here. The format follows
 [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
+### Added
+- Shift + ← / → in the popup pan an hour cursor along the hour-by-hour
+  graph. The current-weather read-out follows it — glyph, big temperature
+  and a condition line that names the hour (`14:00 · Cloudy`), which is the
+  only place the popup ever shows a time. Plain ← / → still switch pinned
+  places. Backspace leaves hour-pan mode, and closing the popup by any route
+  does the same. Wind, humidity and sunrise/sunset stay on the present: the
+  hourly series carries no wind or humidity, and the sun times belong to the
+  day.
 
 ## [0.4.1] — 2026-08-22
 ### Security

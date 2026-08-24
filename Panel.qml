@@ -8,7 +8,8 @@ import qs.Ui
 //
 // Layout, top to bottom: current weather · weather warnings · hour-by-hour
 // graph · next days · tekstvarsel (Norway) · settings and attribution.
-// "Change location" swaps the whole content for SearchView.qml.
+// "Change location" swaps the whole content for SearchView.qml, and Shift+←/→
+// pans the graph's hour cursor, which the hero then reads out.
 //
 // Popup lifecycle (open/openFromHotkey/close/toggle and the hover-reveal
 // flag) follows Omarchy's stock weather plugin so the bar's popout
@@ -89,8 +90,15 @@ Panel {
     if (!editing) return
     editing = false
     if (searchLoader.item) searchLoader.item.end()
-    Qt.callLater(function() { if (keyCatcher) keyCatcher.forceActiveFocus() })
+    Qt.callLater(function() { if (hourPan) hourPan.forceActiveFocus() })
   }
+
+  // The hour cursor is a reading aid, not a setting: it never survives the
+  // popup being closed (by Escape, a click outside, the pill, a popout switch
+  // or IPC — `opened` follows the controller, so all of them land here) or the
+  // search view taking the graph's place. Backspace leaves it without closing.
+  onOpenedChanged: if (!opened) graph.reset()
+  onEditingChanged: if (editing) graph.reset()
 
   // `omarchy-shell <id> edit` summons the popup, then bumps this counter.
   Connections {
@@ -105,7 +113,7 @@ Panel {
     bar: root.bar
     open: root.opened
     centerOnBar: true
-    focusTarget: keyCatcher
+    focusTarget: hourPan
     contentWidth: panel.fittedContentWidth(root.popupWidth)
     contentHeight: panel.fittedContentHeight(content.implicitHeight)
 
@@ -118,6 +126,38 @@ Panel {
       // ← / → (or h / l) switch between the pinned places.
       onMoveRequested: function(dx, dy) { if (dx !== 0 && root.service) root.service.switchPinned(dx) }
       onTabRequested: function(direction) { root.switchPanel(direction) }
+
+      // The hour-cursor keys, which PanelKeyCatcher cannot express: it
+      // reports arrows with their modifiers stripped, so Shift+←/→ would
+      // arrive indistinguishable from the place switch on plain ←/→.
+      //
+      // This item holds the panel's keyboard focus (KeyboardPanel.focusTarget
+      // above) and accepts only the keys it owns. Everything else it leaves
+      // unaccepted, and Qt walks the event up the parent chain to keyCatcher —
+      // its parent — so every other key behaves exactly as it did before.
+      // Plain focus and bubbling; an earlier attempt at Keys.forwardTo on the
+      // catcher never fired at all.
+      Item {
+        id: hourPan
+        focus: true
+        width: 0
+        height: 0
+
+        Keys.onPressed: function(event) {
+          if (root.editing || !root.ready) return
+          // Backspace leaves hour-pan mode — but only when there is a pan to
+          // leave, so an idle Backspace stays someone else's key.
+          if (event.key === Qt.Key_Backspace) {
+            if (!graph.panning) return
+            graph.reset()
+            event.accepted = true
+            return
+          }
+          if (!(event.modifiers & Qt.ShiftModifier)) return
+          if (event.key === Qt.Key_Left) { graph.pan(-1); event.accepted = true }
+          else if (event.key === Qt.Key_Right) { graph.pan(1); event.accepted = true }
+        }
+      }
 
       Flickable {
         id: scroll
@@ -156,6 +196,7 @@ Panel {
               foreground: root.fg
               fontFamily: root.fontFamily
               gutter: root.gutter
+              hour: graph.selectedView
               onUnitTapped: root.service.toggleUnit()
               onLocationTapped: root.startEditing()
               onSiteTapped: root.service.openSite()
