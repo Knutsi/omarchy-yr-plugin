@@ -96,7 +96,9 @@ Item {
     settingsError = ""
   }
   function rememberPlace(place) { savePlaces(Model.rememberPlace(places, place)) }
-  function togglePin(place) { savePlaces(Model.togglePin(places, place)) }
+  // Remembering first lets a fresh search result be pinned in one step; for a
+  // row already in the list this is the same plain toggle it always was.
+  function togglePin(place) { savePlaces(Model.pinPlace(places, place)) }
 
   // ← / → in the popup (and the IPC verbs) walk the pinned places.
   function switchPinned(direction) {
