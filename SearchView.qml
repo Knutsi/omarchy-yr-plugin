@@ -32,6 +32,32 @@ Column {
   property var pendingPlace: null      // the search pick whose save is in flight
   property string hint: ""
 
+  // One line of status, in priority order. Key hints are not status: they live
+  // in the bar under the list.
+  readonly property string statusText: {
+    if (saving) return "Saving and fetching the forecast…"
+    if (location.saveError !== "") return location.saveError
+    if (hint !== "") return hint
+    if (showingPlaces) return "Saved places  ·  type to search"
+    if (queryEmpty) return "Type a place to search"
+    if (field.text.trim().length < 2) return "Type at least two letters"
+    if (search.running) return "Searching…"
+    if (suggestions.length === 0) return "No matches"
+    return "\u00A0"   // the line keeps its height when there is nothing to say
+  }
+
+  // What the keyboard can do right now: the list keys only while there is a
+  // list to walk, and Backspace only while the box is empty — with text in it
+  // Backspace deletes a character instead of going back.
+  readonly property var keyHints: {
+    var back = { caps: queryEmpty ? ["Esc", "⌫"] : ["Esc"], label: "back" }
+    if (choices.length === 0) return [back]
+    return [{ caps: ["↑", "↓"], label: "choose" },
+            { caps: ["↵"], label: "open" },
+            { caps: ["⇧↵"], label: "pin" },
+            back]
+  }
+
   signal dismissed()
 
   spacing: Style.space(12)
@@ -205,13 +231,7 @@ Column {
     }
     Text {
       textFormat: Text.PlainText
-      text: root.saving ? "Saving and fetching the forecast…"
-        : (root.location.saveError !== "" ? root.location.saveError
-        : (root.hint !== "" ? root.hint
-        : (root.showingPlaces ? "↑ ↓ to choose  ·  Enter to open  ·  ⇧Enter to pin  ·  type to search"
-        : (field.text.trim().length < 2 ? "Type at least two letters"
-        : (root.suggestions.length === 0 ? (root.search.running ? "Searching…" : "No matches")
-        : "↑ ↓ to choose  ·  Enter to open  ·  ⇧Enter to pin  ·  Esc to go back" + (root.search.running ? "  ·  searching…" : ""))))))
+      text: root.statusText
       color: root.hint !== "" || root.location.saveError !== "" ? root.foreground : root.faded
       font.family: root.fontFamily
       font.pixelSize: Style.font.caption
@@ -283,6 +303,17 @@ Column {
       font.family: root.fontFamily
       font.pixelSize: Style.font.caption
     }
+  }
+
+  // ---- Key hints, under the list they describe.
+  KeyHints {
+    anchors.left: parent.left
+    anchors.leftMargin: root.gutter
+    width: parent.width - root.gutter * 2
+    visible: !root.saving
+    hints: root.keyHints
+    foreground: root.foreground
+    fontFamily: root.fontFamily
   }
 
   PanelSeparator { width: parent.width }
