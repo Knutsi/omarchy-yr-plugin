@@ -90,13 +90,13 @@ Panel {
     if (!editing) return
     editing = false
     if (searchLoader.item) searchLoader.item.end()
-    Qt.callLater(function() { if (keyCatcher) keyCatcher.forceActiveFocus() })
+    Qt.callLater(function() { if (hourPan) hourPan.forceActiveFocus() })
   }
 
   // The hour cursor is a reading aid, not a setting: it never survives the
   // popup being closed (by Escape, a click outside, the pill, a popout switch
   // or IPC — `opened` follows the controller, so all of them land here) or the
-  // search view taking the graph's place.
+  // search view taking the graph's place. Backspace leaves it without closing.
   onOpenedChanged: if (!opened) graph.reset()
   onEditingChanged: if (editing) graph.reset()
 
@@ -113,7 +113,7 @@ Panel {
     bar: root.bar
     open: root.opened
     centerOnBar: true
-    focusTarget: keyCatcher
+    focusTarget: hourPan
     contentWidth: panel.fittedContentWidth(root.popupWidth)
     contentHeight: panel.fittedContentHeight(content.implicitHeight)
 
@@ -127,27 +127,32 @@ Panel {
       onMoveRequested: function(dx, dy) { if (dx !== 0 && root.service) root.service.switchPinned(dx) }
       onTabRequested: function(direction) { root.switchPanel(direction) }
 
-      // Shift+← / → pan the graph's hour cursor. PanelKeyCatcher reports
-      // arrows without their modifiers, so the modified pair has to be taken
-      // before it becomes a place switch: Keys.forwardTo targets are consulted
-      // first (QQuickKeysAttached processes forwards ahead of its own
-      // onPressed and returns early if one accepts), and anything hourPan
-      // leaves alone falls through to the catcher untouched.
-      Keys.forwardTo: [hourPan]
-
+      // The hour-cursor keys, which PanelKeyCatcher cannot express: it
+      // reports arrows with their modifiers stripped, so Shift+←/→ would
+      // arrive indistinguishable from the place switch on plain ←/→.
+      //
+      // This item holds the panel's keyboard focus (KeyboardPanel.focusTarget
+      // above) and accepts only the keys it owns. Everything else it leaves
+      // unaccepted, and Qt walks the event up the parent chain to keyCatcher —
+      // its parent — so every other key behaves exactly as it did before.
+      // Plain focus and bubbling; an earlier attempt at Keys.forwardTo on the
+      // catcher never fired at all.
       Item {
         id: hourPan
+        focus: true
         width: 0
         height: 0
-        // A bare Item, and a child of something visible: forwarding skips
-        // targets whose isVisible() is false, and a type with its own key
-        // handling (Flickable, a text field) would swallow the fall-through.
 
         Keys.onPressed: function(event) {
-          // Forwarding is not gated by keyCatcher.blocked, and a text field
-          // with the cursor at position 0 ignores Left whatever the modifiers,
-          // so search-view keys reach this handler too. Hence the guard.
           if (root.editing || !root.ready) return
+          // Backspace leaves hour-pan mode — but only when there is a pan to
+          // leave, so an idle Backspace stays someone else's key.
+          if (event.key === Qt.Key_Backspace) {
+            if (!graph.panning) return
+            graph.reset()
+            event.accepted = true
+            return
+          }
           if (!(event.modifiers & Qt.ShiftModifier)) return
           if (event.key === Qt.Key_Left) { graph.pan(-1); event.accepted = true }
           else if (event.key === Qt.Key_Right) { graph.pan(1); event.accepted = true }
