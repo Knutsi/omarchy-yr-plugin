@@ -5,6 +5,8 @@ All notable changes to this plugin are documented here. The format follows
 [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
+
+## [0.5.0] — 2026-08-25
 ### Added
 - Keyboard routes into the search view: `s` in the popup opens it, Shift+Enter
   pins the highlighted row instead of opening it (unpinning one already

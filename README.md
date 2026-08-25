@@ -23,8 +23,35 @@ omarchy bar move io.github.knutsi.yr --section right --index 0
 ```
 
 It can live next to the stock `omarchy.weather` pill or replace it
-(`omarchy bar put omarchy.weather` brings the stock one back). Update with
-`omarchy plugin update io.github.knutsi.yr`. Requires Omarchy 4.0 or newer.
+(`omarchy bar put omarchy.weather` brings the stock one back). Requires
+Omarchy 4.0 or newer.
+
+### Updating
+
+```bash
+omarchy plugin update io.github.knutsi.yr
+```
+
+Omarchy fetches the repository's default branch, shows you the diff, and
+fast-forwards the checkout in place. The plugin is re-validated afterwards and
+rolled back if the new commit does not pass. The widget reloads itself within a
+moment — no shell restart and no logout. Add `--yes` to skip the diff and the
+prompt, or drop the id to update every git-managed plugin at once.
+
+Your settings and pinned places survive: they live on the widget's entry in
+`~/.config/omarchy/shell.json`, which the update never touches. Removing and
+re-adding is **not** an upgrade path — `omarchy plugin remove` deletes that
+entry, and the pinned places with it.
+
+Two things make an update refuse:
+
+- **Local changes** — the fast-forward fails with `cannot fast-forward`.
+  Commit or stash them in `~/.config/omarchy/plugins/io.github.knutsi.yr`.
+- **A hand-installed copy** — a folder without `.git` has nothing to pull from.
+
+The marketplace listing pins a verified commit, but `omarchy plugin add` and
+`omarchy plugin update` both track the repository's current upstream HEAD, so
+an update can bring code newer than the last verified snapshot.
 
 ### Uninstall
 

@@ -18,7 +18,7 @@
 // the User-Agent, round coordinates to 4 decimals, poll at most every
 // 10 minutes, revalidate with If-Modified-Since, credit "MET Norway".
 
-var VERSION = "0.4.1"
+var VERSION = "0.5.0"
 var USER_AGENT = "omarchy-yr-plugin/" + VERSION + " github.com/Knutsi/omarchy-yr-plugin"
 var ATTRIBUTION = "Data from MET Norway"
 
