@@ -592,6 +592,28 @@ function neighbourPinned(places, current, direction) {
   return next === index ? null : pinned[next]
 }
 
+// Pin (or unpin) `row`, remembering it first so a place the list has never
+// seen — a fresh search result — can be pinned in one keystroke. togglePin
+// alone returns the list untouched for a row it cannot find, which would make
+// Shift+Enter on a search result look broken. Remembering an already-pinned
+// row is a no-op, so this stays a plain toggle for rows already in the list.
+function pinPlace(places, row) {
+  return togglePin(rememberPlace(places, row), row)
+}
+
+// Whether the saved list has `row` pinned right now. A search suggestion
+// carries no `pinned` field of its own, so asking the list is the only way to
+// tell whether Shift+Enter would pin it or unpin it.
+function isPinned(places, row) {
+  var target = placeRecord(row, false)
+  if (!target) return false
+  var current = parsePlaces(places)
+  for (var i = 0; i < current.length; i++) {
+    if (samePlace(current[i], target)) return current[i].pinned === true
+  }
+  return false
+}
+
 function canPin(places) {
   return pinnedCount(parsePlaces(places)) < MAX_PINNED
 }
@@ -1498,7 +1520,8 @@ if (typeof module !== "undefined") {
     validCoords: validCoords, formatCoord: formatCoord, validTempC: validTempC, TEMP_C_MIN: TEMP_C_MIN, TEMP_C_MAX: TEMP_C_MAX,
     num: num, strictNum: strictNum,
     // saved places
-    parsePlaces: parsePlaces, rememberPlace: rememberPlace, togglePin: togglePin, canPin: canPin, samePlace: samePlace,
+    parsePlaces: parsePlaces, rememberPlace: rememberPlace, togglePin: togglePin, pinPlace: pinPlace,
+    isPinned: isPinned, canPin: canPin, samePlace: samePlace,
     neighbourPinned: neighbourPinned,
     // child processes and the yr.no link
     settingCommand: settingCommand, persistCommand: persistCommand, clearLocationCommand: clearLocationCommand,

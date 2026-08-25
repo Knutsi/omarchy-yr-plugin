@@ -33,6 +33,51 @@ test("parsePlaces treats the stored array as outside input", () => {
   assert.deepEqual(Model.parsePlaces({ length: "2", 0: oslo }), [])
 })
 
+test("pinPlace pins a place the list has never seen, and toggles one it has", () => {
+  // togglePin alone cannot find a fresh search result, so Shift+Enter on one
+  // would silently do nothing.
+  assert.deepEqual(Model.togglePin([], oslo), [], "premise: togglePin needs the row to exist")
+
+  let list = Model.pinPlace([], oslo)
+  assert.deepEqual(list, [{ ...oslo, pinned: true }], "a result the list never saw is remembered and pinned at once")
+  assert.equal(Model.isPinned(list, oslo), true)
+
+  list = Model.pinPlace(list, oslo)
+  assert.deepEqual(list, [{ ...oslo, pinned: false }], "a second press unpins, leaving it among the recents")
+  assert.equal(Model.isPinned(list, oslo), false)
+
+  // A recent is promoted, not duplicated.
+  list = Model.pinPlace(Model.rememberPlace([], bergen), bergen)
+  assert.deepEqual(list.map(p => [p.name, p.pinned]), [["Bergen", true]])
+
+  // The pin limit still holds: a sixth pin leaves the list alone.
+  const full = Array.from({ length: Model.MAX_PINNED }, (_, i) => place(i, true))
+  const blocked = Model.pinPlace(full, oslo)
+  assert.equal(blocked.filter(p => p.pinned).length, Model.MAX_PINNED)
+  assert.equal(Model.isPinned(blocked, oslo), false, "so the view must check canPin before promising a pin")
+  assert.equal(Model.canPin(full), false)
+
+  // Garbage in, list out — never a throw.
+  assert.deepEqual(Model.pinPlace([], null), [])
+  assert.deepEqual(Model.pinPlace([], { name: "NoCoords" }), [])
+  assert.deepEqual(Model.pinPlace("garbage", oslo), [{ ...oslo, pinned: true }])
+})
+
+test("isPinned answers for a search suggestion, which carries no pinned field", () => {
+  const saved = Model.pinPlace([], oslo)
+  // A suggestion record: same place, no `pinned` key of its own.
+  const suggestion = { name: "Oslo", description: "Oslo, Norway", latitude: 59.9127, longitude: 10.7461 }
+  assert.equal("pinned" in suggestion, false)
+  assert.equal(Model.isPinned(saved, suggestion), true, "the list is the authority, not the row")
+  assert.equal(Model.isPinned(saved, bergen), false)
+  assert.equal(Model.isPinned([], oslo), false)
+  assert.equal(Model.isPinned(saved, null), false)
+  assert.equal(Model.isPinned(saved, { name: "Oslo" }), false, "no coordinates, no answer")
+  assert.equal(Model.isPinned("garbage", oslo), false)
+  // A recent is not a pin.
+  assert.equal(Model.isPinned(Model.rememberPlace([], bergen), bergen), false)
+})
+
 test("rememberPlace keeps the latest five searches, newest first, behind the pins", () => {
   let list = Model.rememberPlace([], oslo)
   assert.deepEqual(list, [{ ...oslo, pinned: false }])

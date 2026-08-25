@@ -32,6 +32,32 @@ Column {
   property var pendingPlace: null      // the search pick whose save is in flight
   property string hint: ""
 
+  // One line of status, in priority order. Key hints are not status: they live
+  // in the bar under the list.
+  readonly property string statusText: {
+    if (saving) return "Saving and fetching the forecast…"
+    if (location.saveError !== "") return location.saveError
+    if (hint !== "") return hint
+    if (showingPlaces) return "Saved places  ·  type to search"
+    if (queryEmpty) return "Type a place to search"
+    if (field.text.trim().length < 2) return "Type at least two letters"
+    if (search.running) return "Searching…"
+    if (suggestions.length === 0) return "No matches"
+    return "\u00A0"   // the line keeps its height when there is nothing to say
+  }
+
+  // What the keyboard can do right now: the list keys only while there is a
+  // list to walk, and Backspace only while the box is empty — with text in it
+  // Backspace deletes a character instead of going back.
+  readonly property var keyHints: {
+    var back = { caps: queryEmpty ? ["Esc", "⌫"] : ["Esc"], label: "back" }
+    if (choices.length === 0) return [back]
+    return [{ caps: ["↑", "↓"], label: "choose" },
+            { caps: ["↵"], label: "open" },
+            { caps: ["⇧↵"], label: "pin" },
+            back]
+  }
+
   signal dismissed()
 
   spacing: Style.space(12)
@@ -60,6 +86,19 @@ Column {
     if (!place) return
     pendingPlace = place
     location.persist(place.name, place.latitude, place.longitude)
+  }
+
+  // Shift+Enter pins the row under the cursor instead of opening it — and
+  // unpins it if it is already pinned, the way the pin button does. Works on a
+  // search result as well as a saved row: Service.togglePin remembers first.
+  function pinSelected() {
+    var place = choices[selectedIndex]
+    if (!place) return
+    if (!Model.isPinned(places, place) && !service.canPin) {
+      hint = "Five places are pinned already — unpin one first"
+      return
+    }
+    service.togglePin(place)
   }
 
   function commit() {
@@ -160,9 +199,17 @@ Column {
 
       Keys.onPressed: function(event) {
         if (event.key === Qt.Key_Escape) { root.dismissed(); event.accepted = true }
+        // Backspace on an empty box goes back, the way it leaves hour-pan mode
+        // in the forecast view. With text in the box it still deletes, so the
+        // way out is one press past the last character.
+        else if (event.key === Qt.Key_Backspace && field.text.length === 0) { root.dismissed(); event.accepted = true }
         else if (event.key === Qt.Key_Down) { if (root.selectedIndex < root.choices.length - 1) root.selectedIndex++; event.accepted = true }
         else if (event.key === Qt.Key_Up) { if (root.selectedIndex > 0) root.selectedIndex--; event.accepted = true }
-        else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) { if (!root.saving) root.commit(); event.accepted = true }
+        else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+          if (event.modifiers & Qt.ShiftModifier) root.pinSelected()
+          else if (!root.saving) root.commit()
+          event.accepted = true
+        }
       }
     }
   }
@@ -184,13 +231,7 @@ Column {
     }
     Text {
       textFormat: Text.PlainText
-      text: root.saving ? "Saving and fetching the forecast…"
-        : (root.location.saveError !== "" ? root.location.saveError
-        : (root.hint !== "" ? root.hint
-        : (root.showingPlaces ? "↑ ↓ to choose  ·  Enter to pick  ·  type to search"
-        : (field.text.trim().length < 2 ? "Type at least two letters"
-        : (root.suggestions.length === 0 ? (root.search.running ? "Searching…" : "No matches")
-        : "↑ ↓ to choose  ·  Enter to pick  ·  Esc to go back" + (root.search.running ? "  ·  searching…" : ""))))))
+      text: root.statusText
       color: root.hint !== "" || root.location.saveError !== "" ? root.foreground : root.faded
       font.family: root.fontFamily
       font.pixelSize: Style.font.caption
@@ -262,6 +303,17 @@ Column {
       font.family: root.fontFamily
       font.pixelSize: Style.font.caption
     }
+  }
+
+  // ---- Key hints, under the list they describe.
+  KeyHints {
+    anchors.left: parent.left
+    anchors.leftMargin: root.gutter
+    width: parent.width - root.gutter * 2
+    visible: !root.saving
+    hints: root.keyHints
+    foreground: root.foreground
+    fontFamily: root.fontFamily
   }
 
   PanelSeparator { width: parent.width }

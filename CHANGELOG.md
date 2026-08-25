@@ -6,6 +6,15 @@ All notable changes to this plugin are documented here. The format follows
 
 ## [Unreleased]
 ### Added
+- Keyboard routes into the search view: `s` in the popup opens it, Shift+Enter
+  pins the highlighted row instead of opening it (unpinning one already
+  pinned), and Backspace on an empty search box goes back. Shift+Enter works
+  on a search result, not just a saved place — the place is remembered and
+  pinned in one step.
+- A key-hint bar under the search list shows the keys that work right now, as
+  small caps: `↑` `↓` choose · `↵` open · `⇧↵` pin · `Esc` `⌫` back. The
+  status line above the list is now status only — it no longer doubles as the
+  key legend.
 - Shift + ← / → in the popup pan an hour cursor along the hour-by-hour
   graph. The current-weather read-out follows it — glyph, big temperature
   and a condition line that names the hour (`14:00 · Cloudy`), which is the

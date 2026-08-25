@@ -126,6 +126,9 @@ Panel {
       // ← / → (or h / l) switch between the pinned places.
       onMoveRequested: function(dx, dy) { if (dx !== 0 && root.service) root.service.switchPinned(dx) }
       onTabRequested: function(direction) { root.switchPanel(direction) }
+      // `s` opens the search / saved-places view, the way Return does. Both
+      // cases, following the shell catcher's own `x`/`X` convention.
+      onTextKey: function(text) { if (text === "s" || text === "S") root.startEditing() }
 
       // The hour-cursor keys, which PanelKeyCatcher cannot express: it
       // reports arrows with their modifiers stripped, so Shift+←/→ would
