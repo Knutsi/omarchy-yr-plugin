@@ -5,6 +5,13 @@ All notable changes to this plugin are documented here. The format follows
 [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
+### Fixed
+- The popup can be closed again on current Omarchy shells, which make the
+  bar's `centerHoverRevealSuppressed` read-only. Assigning it threw a
+  `TypeError` before the popup was hidden, so Escape, a click outside, the
+  pill and IPC all left it stuck open. The flag now goes through
+  `bar.setCenterHoverRevealSuppressed()`, with the assignment kept for older
+  shells.
 
 ## [0.5.0] — 2026-08-25
 ### Added
