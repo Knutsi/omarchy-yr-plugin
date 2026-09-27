@@ -6,17 +6,31 @@ Before making code changes, and **always** before cutting a release or
 submitting an update to the marketplace, fetch and re-read the current
 Omarchy plugin guides — they change, so do not rely on memory:
 
-- https://omarchyplugins.com/develop.html — plugin contract, manifest fields,
+- https://plugins.omarchy.org/develop.html — plugin contract, manifest fields,
   validation rules (no `omarchy.*` ids, no symlinks inside the plugin folder,
   every entry point must exist), theming (use the bar's foreground/font).
-- https://omarchyplugins.com/publish.html — required repo files, manifest
+- https://plugins.omarchy.org/publish.html — required repo files, manifest
   fields, how submissions and updates are validated and approved.
 
+(The site was `omarchyplugins.com` and the repo `HANCORE-linux/…` until
+September 2026; both redirect.)
+
 Make sure the change and the release still satisfy them before proceeding.
-The marketplace repo (HANCORE-linux/omarchy-plugin-marketplace:
-SUBMISSION.md, VERIFICATION.md, SECURITY.md) has the detailed rules; its
-security baseline statically flags literal `sudo`/`pkexec`/package-manager
-commands anywhere in plugin code, so keep those in the README only.
+The marketplace repo (omacom/omarchy-plugin-marketplace: SUBMISSION.md,
+VERIFICATION.md, SECURITY.md) has the detailed rules. Its Automated Security
+Baseline (`scripts/security-baseline*.mjs`, policy v3) is a line-by-line regex
+scan of the exact commit — every `.qml`/`.js`/`.mjs`/`.sh`/`.yml`/… file,
+the entry points, anything named `*install*`/`*setup*`, **and every line of
+the root README, prose included**. A non-negated `sudo`/`pkexec`, a
+package-manager install command (`npm install` counts), `systemctl`, a
+`curl`/`git clone` of our own repo, or a file named like an installer is a
+*review capability*: the outcome drops from `passed` to `review-required`
+and verification is no longer automatic. Only `.github/`, `docs/`, `test(s)/`,
+`fixtures/`, `spec(s)/`, `coverage/` and `node_modules/` are out of scope, so
+such words belong there or nowhere. The scan reads GitHub's API and never
+runs plugin code, so it can be run locally before submitting (sparse-clone
+the marketplace repo, `node scripts/security-baseline.mjs --metadata=… --json=…`
+with `GITHUB_TOKEN` set).
 
 ## Engineering invariants
 
@@ -154,6 +168,15 @@ with `Cannot assign to read-only property "centerHoverRevealSuppressed"`.
 4. `omarchy restart shell` and check the pill and popup by hand; then
    `test/live/escape-closes-popup.sh` must pass.
 5. Merge to `main`, tag `vX.Y.Z`, create the GitHub release.
-6. Marketplace: a listed plugin is updated via the "verify-plugin" issue form
-   with the new 40-char HEAD SHA; a pending submission is re-validated by
-   editing the open submission issue.
+6. Marketplace — **not optional**: verification is bound to one exact commit,
+   and the catalog refresh compares it with `main`'s HEAD. Any push to `main`
+   after a verification (a release, but also a docs-only merge) turns the
+   listing into "Update unverified" — shown as plain "Unverified" on the
+   cards — until the new HEAD is promoted. Open the "verify-plugin" issue form
+   on omacom/omarchy-plugin-marketplace, action **Verify and publish a newer
+   upstream commit**, with the plugin id, the repo URL and the 40-char HEAD
+   SHA of `main`; the bot validates, a maintainer applies
+   `approved-and-verified`. If `main` moves while the issue is open, edit the
+   issue with the new SHA. (0.5.0 skipped this and sat "Unverified" for four
+   weeks.) A pending first submission is re-validated by editing its open
+   submission issue.
