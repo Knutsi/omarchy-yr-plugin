@@ -58,10 +58,14 @@ Panel {
     service.weather.refresh(false)
   }
 
+  // Hide first. Everything after it is cleanup, and a throw there must not
+  // leave the popup open: when this line came last, the read-only bar facade
+  // (below) made every close throw before reaching it — Escape, a click
+  // outside, the pill, IPC — and only a shell restart got rid of the popup.
   function close() {
+    root.controller.hide()
     setCenterHoverRevealSuppressed(false)
     if (editing) stopEditing()
-    root.controller.hide()
   }
 
   function toggle() {
@@ -75,8 +79,14 @@ Panel {
     return false
   }
 
+  // A third-party plugin's `bar` is the shell's PluginBarApi facade (Omarchy
+  // 4.0.4+), where `centerHoverRevealSuppressed` is read-only and assigning it
+  // throws; the setter is the way in. The assignment is only for older shells
+  // that handed plugins the Bar itself — the stock weather panel does the same.
   function setCenterHoverRevealSuppressed(value) {
-    if (root.bar && "centerHoverRevealSuppressed" in root.bar)
+    if (root.bar && typeof root.bar.setCenterHoverRevealSuppressed === "function")
+      root.bar.setCenterHoverRevealSuppressed(value)
+    else if (root.bar && "centerHoverRevealSuppressed" in root.bar)
       root.bar.centerHoverRevealSuppressed = value
   }
 

@@ -118,6 +118,30 @@ location names and an unknown `symbol_code` all reached such sinks unescaped
 When a review (marketplace or otherwise) finds a class of mistake, do not
 just fix the instance: add the invariant here and a test that enforces it.
 
+## The shell's contract
+
+The shell's objects are not the plugin's to write, and they change under it —
+an Omarchy update lands without a plugin release:
+
+- **the `bar` a plugin gets is a read-only facade**: since Omarchy 4.0.4 a
+  third-party plugin's `bar` is `Ui/PluginBarApi.qml`, whose state properties
+  are `readonly`, so writing one throws a TypeError. Call the facade's method
+  (`setCenterHoverRevealSuppressed()`); an assignment is only the fallback
+  for shells older than the facade (4.0.2 handed plugins the Bar itself,
+  writable and without the setter), as in the stock weather panel.
+  `test/lifecycle.test.mjs` flags a bar write with no setter check in front;
+- **`close()` hides first**: every way out of the popup — Escape, a click
+  outside, the pill, a popout switch, IPC — ends in `Panel.close()`, so
+  anything that throws ahead of `controller.hide()` leaves a popup that only
+  a shell restart removes. Cleanup goes after the hide.
+  `test/lifecycle.test.mjs` runs the real `close()` against stand-in bars;
+  `test/live/escape-closes-popup.sh` checks the running shell.
+
+Why (0.3.0–0.5.0 on Omarchy 4.0.4): close() began by assigning the facade's
+read-only `centerHoverRevealSuppressed`. Every close threw before hiding, the
+popup stayed up with Escape, clicks and IPC all dead, and the shell log filled
+with `Cannot assign to read-only property "centerHoverRevealSuppressed"`.
+
 ## Release checklist
 
 1. `npm test`, `npm run lint` (qmllint; only the inherent "unqualified access"
@@ -127,7 +151,8 @@ just fix the instance: add the invariant here and a test that enforces it.
    fixed **and** turned into an invariant + test above before proceeding.
 3. Bump the version in `manifest.json`, `package.json` **and** `Model.js` (`VERSION`) together (`npm test` checks they match); add a
    dated entry to `CHANGELOG.md`.
-4. `omarchy restart shell` and check the pill and popup by hand.
+4. `omarchy restart shell` and check the pill and popup by hand; then
+   `test/live/escape-closes-popup.sh` must pass.
 5. Merge to `main`, tag `vX.Y.Z`, create the GitHub release.
 6. Marketplace: a listed plugin is updated via the "verify-plugin" issue form
    with the new 40-char HEAD SHA; a pending submission is re-validated by
