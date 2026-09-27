@@ -5,6 +5,14 @@ All notable changes to this plugin are documented here. The format follows
 [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
+### Fixed
+- On Omarchy 4.0.4 and later the popup could not be closed: Escape, a click
+  outside, the pill and `omarchy-shell shell hide` all left it open until the
+  shell was restarted. Omarchy 4.0.4 hands plugins a read-only bar, and the
+  popup's close wrote to it before hiding. It now uses the bar's setter, and
+  hides first, so a failing cleanup can no longer keep it open. Restart the
+  shell after updating (`omarchy restart shell`): its plugin reload rebuilds
+  the pill but keeps running the popup code it compiled before.
 
 ## [0.5.0] — 2026-08-25
 ### Added
