@@ -5,6 +5,8 @@ All notable changes to this plugin are documented here. The format follows
 [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
+
+## [0.5.1] — 2026-09-27
 ### Fixed
 - On Omarchy 4.0.4 and later the popup could not be closed: Escape, a click
   outside, the pill and `omarchy-shell shell hide` all left it open until the
@@ -13,6 +15,13 @@ All notable changes to this plugin are documented here. The format follows
   hides first, so a failing cleanup can no longer keep it open. Restart the
   shell after updating (`omarchy restart shell`): its plugin reload rebuilds
   the pill but keeps running the popup code it compiled before.
+  Reported by [@Glen-Sumner](https://github.com/Glen-Sumner) in
+  [#19](https://github.com/Knutsi/omarchy-yr-plugin/issues/19);
+  [@Lifferado](https://github.com/Lifferado)
+  ([#18](https://github.com/Knutsi/omarchy-yr-plugin/pull/18)) and
+  [@Glen-Sumner](https://github.com/Glen-Sumner)
+  ([#20](https://github.com/Knutsi/omarchy-yr-plugin/pull/20)) had each sent
+  the same fix before this one. Thank you both.
 
 ## [0.5.0] — 2026-08-25
 ### Added
@@ -167,7 +176,11 @@ All notable changes to this plugin are documented here. The format follows
   graph, daily forecast, units (°C/°F/K), location shared with Omarchy's stock
   weather widget, IP-based auto-detection.
 
-[Unreleased]: https://github.com/Knutsi/omarchy-yr-plugin/compare/v0.3.2...HEAD
+[Unreleased]: https://github.com/Knutsi/omarchy-yr-plugin/compare/v0.5.1...HEAD
+[0.5.1]: https://github.com/Knutsi/omarchy-yr-plugin/compare/v0.5.0...v0.5.1
+[0.5.0]: https://github.com/Knutsi/omarchy-yr-plugin/compare/v0.4.1...v0.5.0
+[0.4.1]: https://github.com/Knutsi/omarchy-yr-plugin/compare/v0.4.0...v0.4.1
+[0.4.0]: https://github.com/Knutsi/omarchy-yr-plugin/compare/v0.3.2...v0.4.0
 [0.3.2]: https://github.com/Knutsi/omarchy-yr-plugin/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/Knutsi/omarchy-yr-plugin/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/Knutsi/omarchy-yr-plugin/compare/v0.2.0...v0.3.0
